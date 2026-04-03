@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+
+# Saved arm positions (machine-specific)
+saved_positions.json
+
+# Hiwonder built-in packages (use original repo instead)
+jetmax_buildin_funcs/
+jetmax_demos/
+
+# SSH keys — never commit these
+*.pem
+*.key
+id_rsa*
+id_ed25519*
