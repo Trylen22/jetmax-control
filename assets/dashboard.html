@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JetMax Control Deck</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@500;700&display=swap');
+
+    :root {
+      --bg: #070b0f;
+      --panel: #0d141c;
+      --panel-2: #111c28;
+      --line: #1e3344;
+      --accent: #00ff99;
+      --accent-dim: #00cc77;
+      --accent-glow: rgba(0, 255, 153, 0.15);
+      --warn: #ffb020;
+      --text: #d7ffe8;
+      --muted: #6b8f7a;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(0, 255, 153, 0.08), transparent 40%),
+        radial-gradient(circle at bottom right, rgba(0, 120, 255, 0.06), transparent 35%),
+        var(--bg);
+      color: var(--text);
+      font-family: 'Share Tech Mono', monospace;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      border-right: 1px solid var(--line);
+      background: rgba(7, 11, 15, 0.92);
+      padding: 24px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .brand {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.15rem;
+      letter-spacing: 0.18em;
+      color: var(--accent);
+      text-shadow: 0 0 18px var(--accent-glow);
+    }
+
+    .brand small {
+      display: block;
+      margin-top: 6px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    .nav {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .nav button {
+      all: unset;
+      cursor: pointer;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      padding: 12px 14px;
+      color: var(--text);
+      transition: 0.18s ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav button:hover,
+    .nav button.active {
+      border-color: var(--line);
+      background: var(--panel);
+      box-shadow: inset 0 0 0 1px rgba(0, 255, 153, 0.08);
+      color: var(--accent);
+    }
+
+    .nav .icon {
+      width: 28px;
+      text-align: center;
+      opacity: 0.9;
+    }
+
+    .status {
+      margin-top: auto;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+      font-size: 0.72rem;
+      line-height: 1.7;
+      color: var(--muted);
+    }
+
+    .status strong { color: var(--accent-dim); }
+
+    main {
+      padding: 28px;
+      overflow: auto;
+    }
+
+    .module { display: none; animation: fade 0.25s ease; }
+    .module.active { display: block; }
+
+    @keyframes fade {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.35rem;
+      letter-spacing: 0.12em;
+      margin-bottom: 8px;
+      color: var(--accent);
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-bottom: 24px;
+      font-size: 0.85rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: linear-gradient(180deg, var(--panel-2), var(--panel));
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+      min-height: 120px;
+    }
+
+    .card h2 {
+      font-size: 0.95rem;
+      color: var(--accent-dim);
+      margin-bottom: 10px;
+    }
+
+    .card p {
+      font-size: 0.78rem;
+      line-height: 1.6;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .cmd {
+      display: block;
+      width: 100%;
+      background: #05080c;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--accent);
+      font-family: inherit;
+      font-size: 0.72rem;
+      line-height: 1.5;
+      word-break: break-all;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .cmd:hover { border-color: var(--accent-dim); }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.65rem;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .camera-wrap {
+      background: #000;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      aspect-ratio: 4 / 3;
+      max-width: 960px;
+      position: relative;
+    }
+
+    .camera-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      background: #000;
+    }
+
+    .camera-overlay {
+      position: absolute;
+      inset: auto 0 0 0;
+      padding: 10px 14px;
+      background: linear-gradient(transparent, rgba(0,0,0,0.85));
+      font-size: 0.72rem;
+      color: var(--accent);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .btn {
+      all: unset;
+      cursor: pointer;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.75rem;
+      color: var(--text);
+      background: var(--panel);
+    }
+
+    .btn:hover,
+    .btn.primary {
+      border-color: var(--accent-dim);
+      color: var(--accent);
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .link-grid a {
+      display: block;
+      text-decoration: none;
+      color: var(--accent);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 10px;
+      font-size: 0.8rem;
+    }
+
+    .link-grid a:hover { background: var(--panel); }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--panel-2);
+      border: 1px solid var(--accent-dim);
+      color: var(--accent);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: 0.2s ease;
+      pointer-events: none;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 860px) {
+      .shell { grid-template-columns: 1fr; }
+      .sidebar { border-right: none; border-bottom: 1px solid var(--line); }
+      .nav { flex-direction: row; flex-wrap: wrap; }
+      .status { margin-top: 0; border-top: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        JETMAX
+        <small>CONTROL DECK</small>
+      </div>
+
+      <nav class="nav" id="nav">
+        <button class="active" data-module="overview"><span class="icon">◈</span> Overview</button>
+        <button data-module="camera"><span class="icon">◎</span> Camera</button>
+        <button data-module="arm"><span class="icon">↕</span> Arm Control</button>
+        <button data-module="plc"><span class="icon">⬡</span> PLC</button>
+        <button data-module="vision"><span class="icon">◉</span> Vision</button>
+        <button data-module="connect"><span class="icon">⎈</span> Connect</button>
+      </nav>
+
+      <div class="status">
+        <div><strong>Host</strong> <span id="host-label">—</span></div>
+        <div><strong>Camera</strong> :8080</div>
+        <div><strong>Deck</strong> :8888</div>
+        <div><strong>Repo</strong> ~/jetmax-control</div>
+      </div>
+    </aside>
+
+    <main>
+      <section class="module active" id="overview">
+        <h1>OVERVIEW</h1>
+        <p class="subtitle">Modular launch panel for the JetMax — click a section or copy a command into SSH.</p>
+        <div class="grid">
+          <div class="card">
+            <span class="tag">LIVE</span>
+            <h2>Camera Feed</h2>
+            <p>View the belt / workspace camera stream in your browser.</p>
+            <button class="btn primary" onclick="showModule('camera')">Open camera module →</button>
+          </div>
+          <div class="card">
+            <span class="tag">SSH</span>
+            <h2>Keyboard Jog</h2>
+            <p>WASD arm controller with saved positions.</p>
+            <button class="cmd" data-copy="cd ~/jetmax-control && ./run.sh wasd">cd ~/jetmax-control && ./run.sh wasd</button>
+          </div>
+          <div class="card">
+            <span class="tag">ROS</span>
+            <h2>Hello Test</h2>
+            <p>Simple 4-position movement sanity check.</p>
+            <button class="cmd" data-copy="cd ~/jetmax-control && ./run.sh hello">cd ~/jetmax-control && ./run.sh hello</button>
+          </div>
+          <div class="card">
+            <span class="tag">PLC</span>
+            <h2>Live Integration</h2>
+            <p>Poll Allen Bradley Micro820 RobotCmd tag.</p>
+            <button class="cmd" data-copy="cd ~/jetmax-control && ./run.sh plc-live">cd ~/jetmax-control && ./run.sh plc-live</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="module" id="camera">
+        <h1>CAMERA</h1>
+        <p class="subtitle">Live MJPEG from <code>/usb_cam/image_rect_color</code></p>
+        <div class="camera-wrap">
+          <img id="cam-feed" alt="JetMax camera feed" />
+          <div class="camera-overlay" id="cam-url">loading stream…</div>
+        </div>
+        <div class="actions">
+          <button class="btn primary" onclick="reloadCamera()">Reload stream</button>
+          <a class="btn" id="cam-open" href="#" target="_blank" rel="noopener">Open full page</a>
+          <button class="cmd" data-copy="" id="cam-copy">copy camera URL</button>
+        </div>
+      </section>
+
+      <section class="module" id="arm">
+        <h1>ARM CONTROL</h1>
+        <p class="subtitle">Run these over SSH on the JetMax (needs ROS sourced — run.sh handles that).</p>
+        <div class="grid">
+          <div class="card">
+            <h2>WASD Controller</h2>
+            <p>W/S Y · A/D X · R/F Z · P save · G recall · Q quit</p>
+            <button class="cmd" data-copy="cd ~/jetmax-control && ./run.sh wasd">./run.sh wasd</button>
+          </div>
+          <div class="card">
+            <h2>Hello JetMax</h2>
+            <p>Basic ROS movement through four positions.</p>
+            <button class="cmd" data-copy="cd ~/jetmax-control && ./run.sh hello">./run.sh hello</button>
+          </div>
+          <div class="card">
+            <h2>PLC Simulator</h2>
+            <p>Keyboard-driven pick/place — type 5/6/7 for sequences.</p>
+            <button class="cmd" data-copy="cd ~/jetmax-control && ./run.sh plc-sim">./run.sh plc-sim</button>
+          </div>
+          <div class="card">
+            <h2>Custom Stream</h2>
+            <p>Start your own MJPEG server on port 8080 (if not already running).</p>
+            <button class="cmd" data-copy="cd ~/jetmax-control && ./run.sh stream">./run.sh stream</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="module" id="plc">
+        <h1>PLC</h1>
+        <p class="subtitle">Allen Bradley Micro820 @ 192.168.1.10 · tag <strong>RobotCmd</strong></p>
+        <div class="grid">
+          <div class="card">
+            <h2>Live EtherNet/IP</h2>
+            <p>Polls RobotCmd every 500ms and runs arm sequences.</p>
+            <button class="cmd" data-copy="cd ~/jetmax-control && ./run.sh plc-live">./run.sh plc-live</button>
+          </div>
+          <div class="card">
+            <h2>Sim Mode</h2>
+            <p>Same dispatcher, keyboard input instead of PLC.</p>
+            <button class="cmd" data-copy="cd ~/jetmax-control && ./run.sh plc-live-sim">./run.sh plc-live-sim</button>
+          </div>
+          <div class="card">
+            <h2>Tag Diagnostic</h2>
+            <p>Read RobotCmd once per second (no ROS required).</p>
+            <button class="cmd" data-copy="cd ~/jetmax-control && ./run.sh plc-read">./run.sh plc-read</button>
+          </div>
+          <div class="card">
+            <h2>Modbus Toolkit</h2>
+            <p>Do-More PLC reference tools on port 502.</p>
+            <button class="cmd" data-copy="cd ~/jetmax-control && ./run.sh modb watch --ip 192.168.1.10">./run.sh modb watch --ip 192.168.1.10</button>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <h2>RobotCmd values</h2>
+          <p>0 idle · 5 home · 6 pick block_pos_1 → drop · 7 return block</p>
+        </div>
+      </section>
+
+      <section class="module" id="vision">
+        <h1>VISION</h1>
+        <p class="subtitle">Conveyor belt pick-and-place scripts</p>
+        <div class="grid">
+          <div class="card">
+            <h2>Belt Vision</h2>
+            <p>Green block detection + pick loop.</p>
+            <button class="cmd" data-copy="cd ~/jetmax-control && ./run.sh belt">./run.sh belt</button>
+          </div>
+          <div class="card">
+            <h2>Belt TCP Service</h2>
+            <p>PLC socket protocol — systemd service belt-vision.</p>
+            <button class="cmd" data-copy="cd ~/jetmax-control && ./run.sh belt-tcp">./run.sh belt-tcp</button>
+          </div>
+          <div class="card">
+            <h2>Tuning file</h2>
+            <p>Edit HSV, offsets, and pick height in belt_vision.py.</p>
+            <button class="cmd" data-copy="nano ~/jetmax-control/scripts/vision/belt_vision.py">nano ~/jetmax-control/scripts/vision/belt_vision.py</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="module" id="connect">
+        <h1>CONNECT</h1>
+        <p class="subtitle">SSH, update repo, and quick links</p>
+        <div class="link-grid">
+          <a id="ssh-link" href="#">SSH via Tailscale</a>
+          <a id="cam-link" href="#" target="_blank" rel="noopener">Camera stream (port 8080)</a>
+          <a href="https://github.com/Trylen22/jetmax-control" target="_blank" rel="noopener">GitHub — jetmax-control</a>
+        </div>
+        <div class="grid" style="margin-top:16px">
+          <div class="card">
+            <h2>SSH in</h2>
+            <button class="cmd" data-copy="ssh -i ~/.ssh/jetmax_key hiwonder@100.65.198.107">ssh -i ~/.ssh/jetmax_key hiwonder@100.65.198.107</button>
+          </div>
+          <div class="card">
+            <h2>Pull updates</h2>
+            <button class="cmd" data-copy="cd ~/jetmax-control && git pull">cd ~/jetmax-control && git pull</button>
+          </div>
+          <div class="card">
+            <h2>Start dashboard</h2>
+            <button class="cmd" data-copy="cd ~/jetmax-control && ./run.sh dashboard">cd ~/jetmax-control && ./run.sh dashboard</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast">Copied</div>
+
+  <script>
+    const HOST = window.location.hostname || '100.65.198.107';
+    const CAM_URL = `http://${HOST}:8080/stream?topic=/usb_cam/image_rect_color`;
+
+    document.getElementById('host-label').textContent = HOST;
+    document.getElementById('cam-url').textContent = CAM_URL;
+    document.getElementById('cam-feed').src = CAM_URL;
+    document.getElementById('cam-open').href = CAM_URL;
+    document.getElementById('cam-link').href = CAM_URL;
+    document.getElementById('ssh-link').href = `ssh://hiwonder@${HOST}`;
+    document.getElementById('cam-copy').dataset.copy = CAM_URL;
+    document.getElementById('cam-copy').textContent = CAM_URL;
+
+    function showModule(id) {
+      document.querySelectorAll('.module').forEach(m => m.classList.remove('active'));
+      document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      document.querySelector(`[data-module="${id}"]`)?.classList.add('active');
+    }
+
+    document.getElementById('nav').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-module]');
+      if (!btn) return;
+      showModule(btn.dataset.module);
+    });
+
+    function reloadCamera() {
+      const img = document.getElementById('cam-feed');
+      img.src = CAM_URL + '&t=' + Date.now();
+    }
+
+    function toast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 1600);
+    }
+
+    document.body.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-copy]');
+      if (!btn || !btn.dataset.copy) return;
+      try {
+        await navigator.clipboard.writeText(btn.dataset.copy);
+        toast('Copied to clipboard');
+      } catch (_) {
+        toast(btn.dataset.copy);
+      }
+    });
+  </script>
+</body>
+</html>

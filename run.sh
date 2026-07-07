@@ -25,6 +25,7 @@ Commands:
   belt          Vision-guided belt pick
   belt-tcp      Belt vision with PLC TCP socket
   stream        MJPEG camera stream on :8080
+  dashboard     Web control deck on :8888
   modb          Modbus toolkit (pass extra args)
   watch         Modbus register watcher
 
@@ -51,6 +52,7 @@ case "$cmd" in
   belt) source_ros; exec python3 "$REPO/scripts/vision/belt_vision.py" ;;
   belt-tcp) source_ros; exec python3 "$REPO/scripts/vision/belt_vision_socket_tcp.py" ;;
   stream) source_ros; exec python3 "$REPO/scripts/vision/stream.py" ;;
+  dashboard) exec python3 "$REPO/scripts/web/dashboard_server.py" ;;
   modb) exec python3 "$REPO/scripts/plc/modb.py" "$@" ;;
   watch) exec python3 "$REPO/scripts/plc/watch.py" "$@" ;;
   *)

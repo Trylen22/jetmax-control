@@ -84,6 +84,15 @@ Password: `hiwonder`
 http://100.65.198.107:8080/stream?topic=/usb_cam/image_rect_color
 ```
 
+## Control Deck (web dashboard)
+
+Modular menu with camera embed, script launch commands, and quick links:
+
+```bash
+./run.sh dashboard
+# open http://100.65.198.107:8888/
+```
+
 Or start the custom stream:
 
 ```bash
