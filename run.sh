@@ -6,8 +6,10 @@ cd "$REPO"
 
 source_ros() {
   if [ -f "${HOME}/ros/devel/setup.bash" ]; then
+    set +u
     # shellcheck disable=SC1091
     source "${HOME}/ros/devel/setup.bash"
+    set -u
   fi
 }
 
