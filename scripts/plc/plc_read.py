@@ -4,7 +4,7 @@ plc_read.py — Quick diagnostic: just read and print whatever is in RobotCmd.
 Run this to verify the PLC connection is working before running plc_live.py.
 
 Usage:
-  python3 ~/plc_read.py
+  python3 ~/jetmax-control/scripts/plc/plc_read.py
 """
 
 from pylogix import PLC

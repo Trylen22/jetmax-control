@@ -23,7 +23,7 @@ SWAPPING IN THE REAL PLC
 
 RUN
 ───
-  source ~/ros/devel/setup.bash && python3 ~/plc_sim.py
+  source ~/ros/devel/setup.bash && python3 ~/jetmax-control/scripts/plc/plc_sim.py
 """
 
 import rospy

@@ -6,129 +6,127 @@ Custom Python scripts and documentation for operating the **Hiwonder JetMax** ro
 
 ---
 
-## What's in This Repo
+## Repo Layout
 
-| File | Purpose |
-|---|---|
-| `hello_jetmax.py` | Basic arm movement — good first test |
-| `wasd_control.py` | WASD keyboard jogging with position save/recall |
-| `plc_sim.py` | Keyboard-triggered pick-and-place simulator |
-| `plc_live.py` | Live Allen Bradley Micro820 integration via EtherNet/IP |
-| `plc_read.py` | Diagnostic — reads a PLC tag and prints it every second |
-| `belt_vision.py` | Vision-guided pick from a conveyor belt using color detection |
-| `modb.py` | Modbus TCP toolkit (Do-More PLC reference) |
-| `watch.py` | Modbus register watcher |
-| `SETUP.md` | Full setup guide — SSH, WiFi, Tailscale, ROS, arm movement |
-| `COMMANDS.md` | Quick reference for all commands and scripts |
-| `BOOT_SEQUENCE.md` | How the JetMax boots and how WiFi auto-connect works |
-
----
-
-## Hardware Setup
-
-- **Robot:** Hiwonder JetMax Standard
-- **Controller:** NVIDIA Jetson Nano (running Ubuntu 18.04 + ROS Melodic)
-- **PLC:** Allen Bradley Micro820
-- **Network:**
-  - `eth0` → `192.168.1.50` (PLC ethernet network)
-  - `wlan0` → LaTechWPA2 (university WiFi, internet + Tailscale)
-- **Remote Access:** Tailscale VPN (`100.65.198.107`)
+```text
+jetmax-control/
+├── scripts/
+│   ├── arm/          wasd_control, hello_jetmax, pick/place helpers
+│   ├── plc/          plc_live, plc_sim, plc_read, modb, watch
+│   └── vision/       belt_vision, belt_vision_socket_tcp, stream
+├── lib/              banner.py, paths.py
+├── data/             saved_positions.json (gitignored, lives on robot)
+├── docs/             setup guides and quick reference
+├── assets/           printable cards and reference HTML
+└── run.sh            shortcut launcher
+```
 
 ---
 
-## Quick Start
+## Quick Start (JetMax)
 
-**1. SSH into the JetMax**
+**1. One-time setup on the robot**
+
+```bash
+ssh -i ~/.ssh/jetmax_key hiwonder@100.65.198.107
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/Trylen22/jetmax-control/main/scripts/robot_setup.sh)" 2>/dev/null || ~/jetmax-control/scripts/robot_setup.sh
+```
+
+Or after cloning locally on the robot:
+
+```bash
+git clone https://github.com/Trylen22/jetmax-control.git ~/jetmax-control
+~/jetmax-control/scripts/robot_setup.sh
+```
+
+**2. Run scripts**
+
+```bash
+cd ~/jetmax-control
+./run.sh wasd
+./run.sh belt
+./run.sh plc-live
+./run.sh plc-live-sim
+```
+
+Or directly:
+
+```bash
+source ~/ros/devel/setup.bash
+python3 ~/jetmax-control/scripts/arm/wasd_control.py
+```
+
+**3. Update after changes**
+
+```bash
+cd ~/jetmax-control && git pull
+```
+
+---
+
+## SSH
+
 ```bash
 # Over Tailscale (anywhere)
 ssh -i ~/.ssh/jetmax_key hiwonder@100.65.198.107
 
-# Over ethernet (on PLC network)
+# Over PLC ethernet (on-site)
 ssh hiwonder@192.168.1.50
 ```
 
-**2. Source ROS**
-```bash
-source ~/ros/devel/setup.bash
+Password: `hiwonder`
+
+---
+
+## Camera Feed
+
+```text
+http://100.65.198.107:8080/stream?topic=/usb_cam/image_rect_color
 ```
 
-**3. Run a script**
+Or start the custom stream:
+
 ```bash
-python3 ~/wasd_control.py        # keyboard jog
-python3 ~/belt_vision.py         # vision pick loop
-python3 ~/plc_live.py            # live PLC integration
-python3 ~/plc_live.py --sim      # PLC sim (no PLC needed)
+./run.sh stream
+# then open http://100.65.198.107:8080
 ```
 
 ---
 
-## belt_vision.py
+## Hardware
 
-Parks the arm at a watch position over the conveyor belt, detects a **green sticker** on a block using HSV color detection, calculates the real-world position from the pixel offset, and picks the block.
-
-- Returns to watch position after each pick
-- Goes home after 30 seconds of no block detected
-- Ctrl+C → suction off, arm homes cleanly
-
-**Tuning constants (top of file):**
-
-| Variable | Value | Purpose |
-|---|---|---|
-| `WATCH_POS` | `(-160, 0, 210)` | Hover position over belt |
-| `PICK_Z` | `125` | Grab height |
-| `TOOL_OFFSET_X` | `-37` | Camera-to-sucker X correction |
-| `TOOL_OFFSET_Y` | `5` | Camera-to-sucker Y correction |
-| `MM_PER_PIXEL` | `0.25` | Scale factor at z=210 height |
-| `IDLE_TIMEOUT` | `30` | Seconds idle before going home |
+- **Robot:** Hiwonder JetMax Standard
+- **Controller:** NVIDIA Jetson Nano (Ubuntu 18.04 + ROS Melodic)
+- **PLC:** Allen Bradley Micro820 @ `192.168.1.10`
+- **JetMax eth0:** `192.168.1.50`
+- **Tailscale:** `100.65.198.107`
 
 ---
 
-## PLC Integration (Allen Bradley Micro820)
+## Documentation
 
-`plc_live.py` polls a tag named `RobotCmd` (INT) from the PLC via EtherNet/IP every 500ms. When the value changes, the corresponding arm sequence runs.
-
-| Value | Action |
+| Doc | Purpose |
 |---|---|
-| `0` | Idle |
-| `5` | Go home |
-| `6` | Pick block_pos_1 → drop zone |
-| `7` | Drop zone → return to block_pos_1 |
-
-**Tell the PLC programmer:** Create an INT tag named `RobotCmd` in their ladder. Use a `MOV` instruction to write a command value when a condition triggers. Use a One Shot (OSR) to fire it once per event.
-
----
-
-## wasd_control.py Keys
-
-| Key | Action |
-|---|---|
-| W / S | Move forward / back (Y axis) |
-| A / D | Move left / right (X axis) |
-| R / F | Move up / down (Z axis) |
-| Space | Go home |
-| P | Save current position |
-| G | Go to a saved position |
-| L | List saved positions |
-| Q | Quit |
+| [docs/COMMANDS.md](docs/COMMANDS.md) | Quick reference — SSH, scripts, ROS commands |
+| [docs/SETUP.md](docs/SETUP.md) | Full setup — WiFi, Tailscale, ROS, arm movement |
+| [docs/BOOT_SEQUENCE.md](docs/BOOT_SEQUENCE.md) | Boot sequence and WiFi auto-connect |
+| [docs/SSH_LOGIN_CARD.md](docs/SSH_LOGIN_CARD.md) | Printable SSH/camera card |
 
 ---
 
 ## Dependencies
 
-On the JetMax (Jetson Nano):
+On the JetMax:
+
 ```bash
-pip3 install pylogix   # Allen Bradley EtherNet/IP
+pip3 install pylogix pymodbus
 ```
 
-ROS packages (pre-installed by Hiwonder):
-- `jetmax_control`
-- `usb_cam`
-- `apriltag`
+ROS packages (pre-installed by Hiwonder): `jetmax_control`, `usb_cam`
 
 ---
 
 ## See Also
 
 - [Hiwonder JetMax ROS repo](https://github.com/JetMaxRoboticArm)
-- Full setup walkthrough: `SETUP.md`
-- Troubleshooting + boot sequence: `BOOT_SEQUENCE.md`
+- GitHub: [github.com/Trylen22/jetmax-control](https://github.com/Trylen22/jetmax-control)

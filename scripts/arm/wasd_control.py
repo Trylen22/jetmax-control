@@ -13,18 +13,21 @@ Controls:
   Q         — Quit
 """
 import curses
+import sys
 import rospy
 import threading
 import time
 import json
-import os
+from pathlib import Path
 from jetmax_control.msg import SetJetMax, JetMax as JetMaxState
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "lib"))
+from paths import SAVED_POSITIONS_FILE, ensure_data_dir
 
 # --- Settings ---
 STEP = 10          # mm per keypress
 DURATION = 0.3     # seconds per move (lower = snappier)
 HOME = (0, -160, 200)
-SAVED_POSITIONS_FILE = os.path.expanduser('~/saved_positions.json')
 
 # --- State ---
 position = list(HOME)
@@ -33,11 +36,13 @@ saved_positions = []
 
 def load_positions():
     global saved_positions
-    if os.path.exists(SAVED_POSITIONS_FILE):
+    ensure_data_dir()
+    if SAVED_POSITIONS_FILE.exists():
         with open(SAVED_POSITIONS_FILE, 'r') as f:
             saved_positions = json.load(f)
 
 def save_positions():
+    ensure_data_dir()
     with open(SAVED_POSITIONS_FILE, 'w') as f:
         json.dump(saved_positions, f, indent=2)
 
@@ -54,6 +59,21 @@ def move(pub, x, y, z, duration=DURATION):
     msg.z = float(z)
     msg.duration = float(duration)
     pub.publish(msg)
+
+def safe_addstr(stdscr, y, x, text, attr=0):
+    """Write text without crashing when the terminal is too small."""
+    max_y, max_x = stdscr.getmaxyx()
+    if y < 0 or y >= max_y or x >= max_x:
+        return
+    # curses fails if text reaches the last column on the last row.
+    text = str(text)[: max(0, max_x - x - 1)]
+    if not text:
+        return
+    try:
+        stdscr.addstr(y, x, text, attr)
+    except curses.error:
+        pass
+
 
 def prompt(stdscr, prompt_text):
     """Show a prompt and get text input from user."""
@@ -102,29 +122,39 @@ def main(stdscr):
         with position_lock:
             x, y, z = position[0], position[1], position[2]
 
-        # Draw UI
-        stdscr.addstr(0, 0,  "  JetMax WASD Controller", curses.A_BOLD)
-        stdscr.addstr(1, 0,  " ─────────────────────────────────────")
-        stdscr.addstr(2, 0,  f"  X: {x:>8.1f} mm   (A / D)")
-        stdscr.addstr(3, 0,  f"  Y: {y:>8.1f} mm   (W / S)")
-        stdscr.addstr(4, 0,  f"  Z: {z:>8.1f} mm   (R / F)")
-        stdscr.addstr(5, 0,  " ─────────────────────────────────────")
-        stdscr.addstr(6, 0,  "  W/S  Forward/Back   R/F  Up/Down")
-        stdscr.addstr(7, 0,  "  A/D  Left/Right     SPACE  Home")
-        stdscr.addstr(8, 0,  "  P  Save position    G  Go to saved")
-        stdscr.addstr(9, 0,  "  L  List saved       Q  Quit")
-        stdscr.addstr(10, 0, " ─────────────────────────────────────")
+        max_y, _ = stdscr.getmaxyx()
+        status_row = max_y - 1
 
-        # Show saved positions
+        # Draw UI
+        safe_addstr(stdscr, 0, 0,  "  JetMax WASD Controller", curses.A_BOLD)
+        safe_addstr(stdscr, 1, 0,  " ─────────────────────────────────────")
+        safe_addstr(stdscr, 2, 0,  f"  X: {x:>8.1f} mm   (A / D)")
+        safe_addstr(stdscr, 3, 0,  f"  Y: {y:>8.1f} mm   (W / S)")
+        safe_addstr(stdscr, 4, 0,  f"  Z: {z:>8.1f} mm   (R / F)")
+        safe_addstr(stdscr, 5, 0,  " ─────────────────────────────────────")
+        safe_addstr(stdscr, 6, 0,  "  W/S  Forward/Back   R/F  Up/Down")
+        safe_addstr(stdscr, 7, 0,  "  A/D  Left/Right     SPACE  Home")
+        safe_addstr(stdscr, 8, 0,  "  P  Save position    G  Go to saved")
+        safe_addstr(stdscr, 9, 0,  "  L  List saved       Q  Quit")
+        safe_addstr(stdscr, 10, 0, " ─────────────────────────────────────")
+
+        # Show saved positions (only as many as fit above the status line)
         if saved_positions:
-            stdscr.addstr(11, 0, "  Saved positions:")
-            for i, p in enumerate(saved_positions):
-                stdscr.addstr(12 + i, 0, f"  [{i}] {p['name']:12s}  x={p['x']:7.1f}  y={p['y']:7.1f}  z={p['z']:7.1f}")
+            safe_addstr(stdscr, 11, 0, "  Saved positions:")
+            visible = max(0, status_row - 12)
+            for i, p in enumerate(saved_positions[:visible]):
+                safe_addstr(
+                    stdscr, 12 + i, 0,
+                    f"  [{i}] {p['name']:12s}  x={p['x']:7.1f}  y={p['y']:7.1f}  z={p['z']:7.1f}"
+                )
+            hidden = len(saved_positions) - visible
+            if hidden > 0:
+                safe_addstr(stdscr, 12 + visible, 0, f"  ... {hidden} more (press G to go to any slot)")
         else:
-            stdscr.addstr(11, 0, "  No saved positions yet — press P to save one")
+            safe_addstr(stdscr, 11, 0, "  No saved positions yet — press P to save one")
 
         if status_msg:
-            stdscr.addstr(12 + len(saved_positions), 0, f"  {status_msg}", curses.A_BOLD)
+            safe_addstr(stdscr, status_row, 0, f"  {status_msg}", curses.A_BOLD)
 
         key = stdscr.getch()
 

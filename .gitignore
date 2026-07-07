@@ -4,8 +4,9 @@ __pycache__/
 *.egg-info/
 .env
 
-# Saved arm positions (machine-specific)
-saved_positions.json
+# Machine-specific runtime data
+data/saved_positions.json
+data/jetmax_coord_log.csv
 
 # Hiwonder built-in packages (use original repo instead)
 jetmax_buildin_funcs/

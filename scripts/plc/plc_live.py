@@ -14,10 +14,10 @@ PLC SETUP (tell the AB programmer):
        0 = do nothing / idle
 
 RUN:
-  source ~/ros/devel/setup.bash && python3 ~/plc_live.py
+  source ~/ros/devel/setup.bash && python3 ~/jetmax-control/scripts/plc/plc_live.py
 
 TEST WITHOUT PLC:
-  python3 ~/plc_live.py --sim
+  python3 ~/jetmax-control/scripts/plc/plc_live.py --sim
   (runs in simulation mode, prompts for input like plc_sim.py)
 """
 

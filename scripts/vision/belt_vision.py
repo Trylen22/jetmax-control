@@ -16,7 +16,7 @@ TUNE:
   - AXIS_FLIP_X / AXIS_FLIP_Y  if arm moves in the wrong direction
 
 RUN:
-  source ~/ros/devel/setup.bash && python3 ~/belt_vision.py
+  source ~/ros/devel/setup.bash && python3 ~/jetmax-control/scripts/vision/belt_vision.py
 """
 
 import rospy
@@ -31,11 +31,11 @@ from std_msgs.msg import Bool
 # ── Positions ─────────────────────────────────────────────────────────────────
 
 WATCH_POS  = (-160.0,   0.0, 210.0)   # arm hover over belt (camera watches here)
-DROP_ZONE  = (   0.0, -130.0, 130.0)  # where to drop the block
+DROP_ZONE  = (   0.0, -120.0, 100.0)  # where to drop the block
 HOME       = (   0.0, -160.0, 200.0)
 APPROACH_Z   = 180.0
 PICK_Z       = 125.0                  # slightly lower for solid suction contact
-IDLE_TIMEOUT = 30                     # seconds with no block before going home
+IDLE_TIMEOUT = 360	                     # seconds with no block before going home
 
 # ── Vision tuning ─────────────────────────────────────────────────────────────
 
@@ -131,6 +131,7 @@ def detect_green(frame):
 
 def wait_for_block(timeout):
     """Scan camera for up to `timeout` seconds. Returns confirmed offset or None."""
+    wx, wy, wz = WATCH_POS
     deadline = time.time() + timeout
     while time.time() < deadline:
         with frame_lock:

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>hey jennifer</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #fce4ec 0%, #f8bbd0 30%, #f48fb1 60%, #f06292 100%);
+      font-family: 'Times New Roman', Times, serif;
+      overflow: hidden;
+    }
+
+    /* floating petals */
+    .petal {
+      position: fixed;
+      width: 12px;
+      height: 12px;
+      border-radius: 50% 0 50% 0;
+      opacity: 0.5;
+      animation: fall linear infinite;
+      pointer-events: none;
+    }
+
+    @keyframes fall {
+      0%   { transform: translateY(-60px) rotate(0deg);   opacity: 0.6; }
+      100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
+    }
+
+    .card {
+      position: relative;
+      background: rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1.5px solid rgba(255, 255, 255, 0.55);
+      border-radius: 28px;
+      padding: 72px 96px;
+      text-align: center;
+      box-shadow:
+        0 8px 32px rgba(240, 98, 146, 0.25),
+        0 2px 8px rgba(240, 98, 146, 0.15);
+      animation: fadeUp 1s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(40px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .greeting {
+      font-family: 'Times New Roman', Times, serif;
+      font-size: clamp(3rem, 8vw, 6rem);
+      font-weight: 700;
+      font-style: italic;
+      letter-spacing: 0.02em;
+      background: linear-gradient(135deg, #c2185b, #e91e8c, #ad1457);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.1;
+      text-shadow: none;
+    }
+
+    .name {
+      display: block;
+      font-size: clamp(4rem, 10vw, 8rem);
+      font-style: normal;
+      margin-top: 4px;
+    }
+
+    .divider {
+      margin: 28px auto;
+      width: 80px;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, #e91e8c, transparent);
+      border-radius: 2px;
+    }
+
+    .tagline {
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 1.1rem;
+      font-style: italic;
+      color: rgba(173, 20, 87, 0.75);
+      letter-spacing: 0.12em;
+    }
+
+    /* hearts */
+    .hearts {
+      margin-top: 32px;
+      font-size: 1.6rem;
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1);   }
+      50%       { transform: scale(1.15); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- floating petals -->
+  <script>
+    const colors = ['#f48fb1','#f06292','#ec407a','#fce4ec','#f8bbd0'];
+    for (let i = 0; i < 22; i++) {
+      const p = document.createElement('div');
+      p.className = 'petal';
+      p.style.cssText = `
+        left: ${Math.random() * 100}vw;
+        top: ${Math.random() * -60}px;
+        background: ${colors[Math.floor(Math.random() * colors.length)]};
+        width: ${8 + Math.random() * 10}px;
+        height: ${8 + Math.random() * 10}px;
+        animation-duration: ${4 + Math.random() * 6}s;
+        animation-delay: ${Math.random() * 6}s;
+      `;
+      document.body.appendChild(p);
+    }
+  </script>
+
+  <div class="card">
+    <p class="greeting">
+      hey
+      <span class="name">jennifer</span>
+    </p>
+    <div class="divider"></div>
+    <p class="tagline">you are simply wonderful</p>
+    <div class="hearts">&#x1F338; &#x1F49C; &#x1F338;</div>
+  </div>
+
+</body>
+</html>

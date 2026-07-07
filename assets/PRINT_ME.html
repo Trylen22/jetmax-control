@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>JetMax — Robotic Arm Control</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0d0d0d;
+      color: #00ff99;
+      font-family: 'Share Tech Mono', 'Ubuntu Mono', 'Courier New', monospace;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .card {
+      max-width: 760px;
+      width: 100%;
+      border: 1px solid #00ff9944;
+      padding: 40px;
+      background: #0a0a0a;
+    }
+
+    .jetmax {
+      font-size: 13px;
+      line-height: 1.2;
+      color: #00ff99;
+      white-space: pre;
+      text-align: center;
+    }
+
+    .arm {
+      font-size: 11px;
+      line-height: 1.25;
+      color: #00cc77;
+      white-space: pre;
+      margin-top: 8px;
+      display: table;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #00ff9944;
+      margin: 24px 0;
+    }
+
+    .info {
+      font-size: 13px;
+      line-height: 2;
+      color: #00ff99;
+      text-align: left;
+    }
+
+    .info span {
+      color: #00cc77;
+    }
+
+    .label {
+      color: #007744;
+      min-width: 100px;
+      display: inline-block;
+    }
+
+    @media print {
+      body { background: #fff; color: #000; }
+      .card { border-color: #ccc; background: #fff; }
+      .jetmax, .arm { color: #000; }
+      .info { color: #000; }
+      .info span { color: #000; }
+      .label { color: #555; }
+      .divider { border-color: #ccc; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+
+    <pre class="jetmax">     ██╗ ███████╗ ████████╗ ███╗   ███╗  █████╗  ██╗  ██╗
+     ██║ ██╔════╝ ╚══██╔══╝ ████╗ ████║ ██╔══██╗ ╚██╗██╔╝
+     ██║ █████╗      ██║    ██╔████╔██║ ███████║  ╚███╔╝ 
+██   ██║ ██╔══╝      ██║    ██║╚██╔╝██║ ██╔══██║  ██╔██╗ 
+╚█████╔╝ ███████╗    ██║    ██║ ╚═╝ ██║ ██║  ██║ ██╔╝ ██╗
+ ╚════╝  ╚══════╝    ╚═╝    ╚═╝     ╚═╝ ╚═╝  ╚═╝ ╚═╝  ╚═╝
+          R O B O T I C   A R M   C O N T R O L</pre>
+
+    <pre class="arm">
+                                                        ;,
+ `@,                                                  ,@@
+  `@@,                                              ;@;'
+   ,:;@;,                                        .;@;:,
+   `@;:;@@;,                                  ,;@@;::@'
+     `@;::;@@;,.                          .,;@@;;:;@'
+       ;:;;;;;@@@@,;@, ,          , ,@;,;@@@;;;;;;:
+       `:;;:;;;;;@@@@@@@;  .;;;;,  ;@@@@@@@;;;;;;;;;'
+         `:;;@@;:;@@@@@@@@  ,;;,  @@@@@@@@;;;;@@;:'
+            `::;;;;@@@;;@@@;';;;,@@;:@@@@;;:;;;'
+              `:;;;;;@@@;;:@@;;@@;;@@@@;;;;;:'
+                   ```;@@@@@@@@@@@@@@;'''
+                        ;@@@@;;@@@@;
+                      ,@@@;:;;;;;;@@@,
+                     ;:;@:',;;;;@,';@;
+                           ;@@;;@@;
+                           ;@@@;@@;
+                           :;@;;;@;
+                            ;;;;;;'
+                            `;;;;;
+                             `:;'
+                              `'</pre>
+
+    <hr class="divider">
+
+    <div class="info">
+      <div><span class="label">Platform</span>  Hiwonder JetMax  |  Jetson Nano</div>
+      <div><span class="label">ROS</span>  Melodic (Ubuntu 18.04)</div>
+      <div><span class="label">SSH (VPN)</span>  ssh -i ~/.ssh/jetmax_key hiwonder@100.65.198.107</div>
+      <div><span class="label">SSH (eth)</span>  ssh hiwonder@192.168.1.50</div>
+      <div><span class="label">Camera</span>  http://100.65.198.107:8080/stream?topic=/usb_cam/image_rect_color</div>
+      <div><span class="label">Repo</span>  github.com/Trylen22/jetmax-control</div>
+      <div><span class="label">Contact</span>  tbs024@latech.edu  |  318-312-1782</div>
+    </div>
+
+  </div>
+</body>
+</html>
