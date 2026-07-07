@@ -278,7 +278,145 @@
       .sidebar { border-right: none; border-bottom: 1px solid var(--line); }
       .nav { flex-direction: row; flex-wrap: wrap; }
       .status { margin-top: 0; border-top: none; }
+      .cockpit { grid-template-columns: 1fr !important; }
     }
+
+    .cockpit {
+      display: none;
+      grid-template-columns: 1.4fr 0.9fr;
+      gap: 18px;
+      min-height: 70vh;
+    }
+
+    .cockpit.active { display: grid; }
+
+    .cockpit-camera {
+      background: #000;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      position: relative;
+      min-height: 360px;
+    }
+
+    .cockpit-camera img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      min-height: 360px;
+      background: #000;
+    }
+
+    .live-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      font-size: 0.65rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.7);
+      border: 1px solid var(--line);
+      color: var(--accent);
+    }
+
+    .live-badge.on { box-shadow: 0 0 12px var(--accent-glow); }
+
+    .control-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .readout {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .readout div {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .readout label {
+      display: block;
+      font-size: 0.62rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .readout span {
+      font-size: 1.1rem;
+      color: var(--accent);
+    }
+
+    .pad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      max-width: 220px;
+      margin: 0 auto;
+    }
+
+    .pad button, .key-btn {
+      all: unset;
+      cursor: pointer;
+      text-align: center;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px 0;
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+      user-select: none;
+    }
+
+    .pad button:hover, .key-btn:hover, .pad button.active {
+      border-color: var(--accent-dim);
+      color: var(--accent);
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+
+    .pad .ghost { visibility: hidden; }
+
+    .control-banner {
+      border: 1px dashed var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .control-banner.live {
+      border-color: var(--accent-dim);
+      color: var(--accent);
+      background: rgba(0, 255, 153, 0.05);
+    }
+
+    .saved-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .saved-row input, .saved-row select {
+      flex: 1;
+      min-width: 120px;
+      background: #05080c;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 10px;
+      font-family: inherit;
+      font-size: 0.75rem;
+    }
+
+    .launcher.hidden { display: none; }
   </style>
 </head>
 <body>
@@ -318,10 +456,10 @@
             <button class="btn primary" onclick="showModule('camera')">Open camera module →</button>
           </div>
           <div class="card">
-            <span class="tag">SSH</span>
-            <h2>Keyboard Jog</h2>
-            <p>WASD arm controller with saved positions.</p>
-            <button class="cmd" data-copy="cd ~/jetmax-control && ./run.sh wasd">cd ~/jetmax-control && ./run.sh wasd</button>
+            <span class="tag">LIVE</span>
+            <h2>WASD Cockpit</h2>
+            <p>Camera + keyboard jog in the browser — no SSH needed.</p>
+            <button class="btn primary" onclick="openWasdCockpit()">Launch WASD cockpit →</button>
           </div>
           <div class="card">
             <span class="tag">ROS</span>
@@ -353,28 +491,84 @@
       </section>
 
       <section class="module" id="arm">
-        <h1>ARM CONTROL</h1>
-        <p class="subtitle">Run these over SSH on the JetMax (needs ROS sourced — run.sh handles that).</p>
-        <div class="grid">
-          <div class="card">
-            <h2>WASD Controller</h2>
-            <p>W/S Y · A/D X · R/F Z · P save · G recall · Q quit</p>
-            <button class="cmd" data-copy="cd ~/jetmax-control && ./run.sh wasd">./run.sh wasd</button>
+        <div id="arm-launcher">
+          <h1>ARM CONTROL</h1>
+          <p class="subtitle">Launch interactive modes with live camera, or copy SSH commands.</p>
+          <div class="grid">
+            <div class="card">
+              <span class="tag">INTERACTIVE</span>
+              <h2>WASD Cockpit</h2>
+              <p>Live camera + browser keyboard. W/S Y · A/D X · R/F Z · Space home.</p>
+              <button class="btn primary" onclick="openWasdCockpit()">Launch cockpit →</button>
+            </div>
+            <div class="card">
+              <h2>Hello JetMax</h2>
+              <p>Basic ROS movement through four positions (SSH).</p>
+              <button class="cmd" data-copy="cd ~/jetmax-control && ./run.sh hello">./run.sh hello</button>
+            </div>
+            <div class="card">
+              <h2>PLC Simulator</h2>
+              <p>Keyboard-driven pick/place — type 5/6/7 for sequences.</p>
+              <button class="cmd" data-copy="cd ~/jetmax-control && ./run.sh plc-sim">./run.sh plc-sim</button>
+            </div>
+            <div class="card">
+              <h2>Terminal WASD</h2>
+              <p>Classic curses controller over SSH.</p>
+              <button class="cmd" data-copy="cd ~/jetmax-control && ./run.sh wasd">./run.sh wasd</button>
+            </div>
           </div>
-          <div class="card">
-            <h2>Hello JetMax</h2>
-            <p>Basic ROS movement through four positions.</p>
-            <button class="cmd" data-copy="cd ~/jetmax-control && ./run.sh hello">./run.sh hello</button>
+        </div>
+
+        <div class="cockpit" id="arm-cockpit">
+          <div class="cockpit-camera">
+            <span class="live-badge" id="cockpit-live">STANDBY</span>
+            <img id="arm-cam-feed" alt="Live arm camera" />
           </div>
-          <div class="card">
-            <h2>PLC Simulator</h2>
-            <p>Keyboard-driven pick/place — type 5/6/7 for sequences.</p>
-            <button class="cmd" data-copy="cd ~/jetmax-control && ./run.sh plc-sim">./run.sh plc-sim</button>
-          </div>
-          <div class="card">
-            <h2>Custom Stream</h2>
-            <p>Start your own MJPEG server on port 8080 (if not already running).</p>
-            <button class="cmd" data-copy="cd ~/jetmax-control && ./run.sh stream">./run.sh stream</button>
+
+          <div class="control-panel">
+            <div>
+              <h1 style="font-size:1rem;margin-bottom:6px">WASD COCKPIT</h1>
+              <p class="subtitle" style="margin-bottom:0">Click here, then use keyboard or on-screen pad</p>
+            </div>
+
+            <div class="control-banner" id="control-banner" tabindex="0">
+              Click "Enable control" — then click this panel and use WASD / R F / Space
+            </div>
+
+            <div class="readout">
+              <div><label>X</label><span id="pos-x">—</span></div>
+              <div><label>Y</label><span id="pos-y">—</span></div>
+              <div><label>Z</label><span id="pos-z">—</span></div>
+            </div>
+
+            <div class="actions">
+              <button class="btn primary" id="btn-enable" onclick="toggleArmControl()">Enable control</button>
+              <button class="btn" onclick="closeWasdCockpit()">← Back</button>
+            </div>
+
+            <div class="pad" id="keypad">
+              <div class="ghost"></div>
+              <button data-key="w">W</button>
+              <div class="ghost"></div>
+              <button data-key="a">A</button>
+              <button data-key="s">S</button>
+              <button data-key="d">D</button>
+              <button data-key="r">R ↑</button>
+              <button data-key=" ">HOME</button>
+              <button data-key="f">F ↓</button>
+            </div>
+
+            <div class="card" style="min-height:auto">
+              <h2>Saved positions</h2>
+              <div class="saved-row">
+                <input id="save-name" placeholder="Name (e.g. watch_pos)" />
+                <button class="btn" onclick="saveArmPosition()">Save</button>
+              </div>
+              <div class="saved-row" style="margin-top:8px">
+                <select id="saved-select"><option value="">— go to saved —</option></select>
+                <button class="btn" onclick="goSavedPosition()">Go</button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -507,6 +701,149 @@
       } catch (_) {
         toast(btn.dataset.copy);
       }
+    });
+
+    // ── WASD Cockpit ──────────────────────────────────────────────
+    let armControlEnabled = false;
+    let armPollTimer = null;
+    let armSessionStarted = false;
+
+    async function api(path, method = 'GET', body = null) {
+      const opts = { method, headers: { 'Content-Type': 'application/json' } };
+      if (body) opts.body = JSON.stringify(body);
+      const res = await fetch(path, opts);
+      return res.json();
+    }
+
+    function openWasdCockpit() {
+      showModule('arm');
+      document.getElementById('arm-launcher').classList.add('hidden');
+      document.getElementById('arm-cockpit').classList.add('active');
+      document.getElementById('arm-cam-feed').src = CAM_URL + '&t=' + Date.now();
+      if (!armSessionStarted) startArmSession();
+      if (!armPollTimer) armPollTimer = setInterval(refreshArmState, 350);
+      document.getElementById('control-banner').focus();
+    }
+
+    async function startArmSession() {
+      toast('Connecting to arm…');
+      const res = await api('/api/session/start', 'POST', { mode: 'wasd' });
+      armSessionStarted = true;
+      if (res.arm_connected) {
+        toast('Arm connected');
+        document.getElementById('cockpit-live').textContent = 'LIVE';
+        document.getElementById('cockpit-live').classList.add('on');
+      } else {
+        toast('Waiting for jetmax_control…');
+      }
+      refreshSavedList();
+      refreshArmState();
+    }
+
+    async function closeWasdCockpit() {
+      if (armControlEnabled) await toggleArmControl(false);
+      if (armSessionStarted) {
+        await api('/api/session/stop', 'POST', {});
+        armSessionStarted = false;
+      }
+      document.getElementById('arm-cockpit').classList.remove('active');
+      document.getElementById('arm-launcher').classList.remove('hidden');
+      document.getElementById('cockpit-live').textContent = 'STANDBY';
+      document.getElementById('cockpit-live').classList.remove('on');
+    }
+
+    async function refreshArmState() {
+      try {
+        const s = await api('/api/position');
+        document.getElementById('pos-x').textContent = Number(s.x).toFixed(1);
+        document.getElementById('pos-y').textContent = Number(s.y).toFixed(1);
+        document.getElementById('pos-z').textContent = Number(s.z).toFixed(1);
+        if (s.arm_connected) {
+          document.getElementById('cockpit-live').textContent = 'LIVE';
+          document.getElementById('cockpit-live').classList.add('on');
+        }
+      } catch (_) {}
+    }
+
+    async function toggleArmControl(force) {
+      const enable = typeof force === 'boolean' ? force : !armControlEnabled;
+      armControlEnabled = enable;
+      const banner = document.getElementById('control-banner');
+      const btn = document.getElementById('btn-enable');
+      if (enable) {
+        banner.classList.add('live');
+        banner.textContent = 'CONTROL ACTIVE — WASD / R F / Space · click pad or type';
+        btn.textContent = 'Disable control';
+        banner.focus();
+        toast('Control enabled');
+      } else {
+        banner.classList.remove('live');
+        banner.textContent = 'Click "Enable control" — then click this panel and use WASD / R F / Space';
+        btn.textContent = 'Enable control';
+      }
+    }
+
+    async function sendJog(key) {
+      if (!armControlEnabled) return;
+      const res = await api('/api/jog', 'POST', { key });
+      if (res.ok) refreshArmState();
+      else if (res.reason !== 'rate_limited') toast(res.reason || 'Jog failed');
+    }
+
+    async function refreshSavedList() {
+      const res = await api('/api/positions');
+      const sel = document.getElementById('saved-select');
+      sel.innerHTML = '<option value="">— go to saved —</option>';
+      (res.positions || []).forEach((p, i) => {
+        const opt = document.createElement('option');
+        opt.value = String(i);
+        opt.textContent = `[${i}] ${p.name} (${p.x}, ${p.y}, ${p.z})`;
+        sel.appendChild(opt);
+      });
+    }
+
+    async function saveArmPosition() {
+      const name = document.getElementById('save-name').value.trim();
+      if (!name) return toast('Enter a name');
+      const res = await api('/api/positions/save', 'POST', { name });
+      if (res.ok) {
+        toast('Saved ' + name);
+        document.getElementById('save-name').value = '';
+        refreshSavedList();
+      }
+    }
+
+    async function goSavedPosition() {
+      const index = document.getElementById('saved-select').value;
+      if (index === '') return;
+      const res = await api('/api/positions/go', 'POST', { index: Number(index) });
+      if (res.ok) toast('Moving to ' + res.position.name);
+    }
+
+    document.getElementById('keypad').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-key]');
+      if (!btn) return;
+      sendJog(btn.dataset.key);
+    });
+
+    document.getElementById('control-banner').addEventListener('keydown', (e) => {
+      if (!armControlEnabled) return;
+      const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      const allowed = ['w','a','s','d','r','f',' '];
+      if (!allowed.includes(key)) return;
+      e.preventDefault();
+      sendJog(key);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (!armControlEnabled) return;
+      if (!document.getElementById('arm-cockpit').classList.contains('active')) return;
+      const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      const allowed = ['w','a','s','d','r','f',' '];
+      if (!allowed.includes(key)) return;
+      if (e.target.matches('input, select, textarea')) return;
+      e.preventDefault();
+      sendJog(key);
     });
   </script>
 </body>

@@ -52,7 +52,7 @@ case "$cmd" in
   belt) source_ros; exec python3 "$REPO/scripts/vision/belt_vision.py" ;;
   belt-tcp) source_ros; exec python3 "$REPO/scripts/vision/belt_vision_socket_tcp.py" ;;
   stream) source_ros; exec python3 "$REPO/scripts/vision/stream.py" ;;
-  dashboard) exec python3 "$REPO/scripts/web/dashboard_server.py" ;;
+  dashboard) source_ros; exec python3 "$REPO/scripts/web/dashboard_server.py" ;;
   modb) exec python3 "$REPO/scripts/plc/modb.py" "$@" ;;
   watch) exec python3 "$REPO/scripts/plc/watch.py" "$@" ;;
   *)
