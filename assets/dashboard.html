@@ -4,8 +4,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>JetMax Control Deck</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('jetmax-theme');
+        if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    })();
+  </script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Spectral:wght@400;500;600;700&display=swap');
 
     :root {
       --bg: #f6f7f9;
@@ -25,13 +36,38 @@
       --green-border: #bfe6cd;
       --blue: #2563eb;
       --blue-soft: #eef3ff;
-      --sans: 'Inter', system-ui, -apple-system, sans-serif;
+      --art-teal: #0d9488;
+      --sans: 'Spectral', 'Times New Roman', Times, Georgia, serif;
       --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
       --radius: 10px;
       --radius-sm: 7px;
       --shadow-sm: 0 1px 2px rgba(16, 18, 22, 0.05);
       --shadow-md: 0 1px 3px rgba(16, 18, 22, 0.06), 0 4px 12px rgba(16, 18, 22, 0.05);
       --shadow-lg: 0 10px 30px rgba(16, 18, 22, 0.10);
+    }
+
+    html[data-theme="dark"] {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface-2: #10151c;
+      --border: #2a313c;
+      --border-strong: #3d444d;
+      --text: #e6edf3;
+      --text-dim: #9ba5b4;
+      --text-muted: #6e7681;
+      --accent: #f97316;
+      --accent-hover: #fb923c;
+      --accent-soft: rgba(251, 146, 60, 0.14);
+      --accent-border: rgba(251, 146, 60, 0.42);
+      --green: #3fb950;
+      --green-soft: rgba(63, 185, 80, 0.15);
+      --green-border: rgba(63, 185, 80, 0.40);
+      --blue: #58a6ff;
+      --blue-soft: rgba(88, 166, 255, 0.14);
+      --art-teal: #2dd4bf;
+      --shadow-sm: 0 1px 2px rgba(1, 4, 9, 0.4);
+      --shadow-md: 0 1px 3px rgba(1, 4, 9, 0.5), 0 6px 16px rgba(1, 4, 9, 0.4);
+      --shadow-lg: 0 12px 34px rgba(1, 4, 9, 0.55);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -165,6 +201,28 @@
     .status strong { color: var(--text-dim); font-weight: 600; }
     .status span, .status em { font-family: var(--mono); font-style: normal; font-size: 10.5px; color: var(--text-dim); }
 
+    .theme-toggle {
+      all: unset;
+      cursor: pointer;
+      margin: 8px 12px 0;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+      transition: background 0.14s, color 0.14s, border-color 0.14s;
+    }
+
+    .theme-toggle:hover { background: var(--surface-2); color: var(--text); border-color: var(--border-strong); }
+    .theme-toggle svg { width: 15px; height: 15px; flex-shrink: 0; }
+    .theme-toggle .icon-sun { display: none; }
+    html[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+    html[data-theme="dark"] .theme-toggle .icon-sun { display: inline-block; }
+
     /* ── Main ── */
     main {
       padding: 34px 40px 60px;
@@ -196,6 +254,53 @@
     }
 
     .subtitle strong { color: var(--text); font-weight: 600; }
+
+    /* ── Terminal hero banner ── */
+    .hero-terminal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      margin: 0 auto 28px;
+      max-width: 720px;
+    }
+
+    .term-body {
+      margin: 0 auto;
+      width: fit-content;
+      max-width: 100%;
+      padding: 28px 24px;
+      font-family: var(--mono);
+      font-size: clamp(8px, 1.32vw, 12.5px);
+      line-height: 1.32;
+      color: var(--text-dim);
+      overflow-x: auto;
+      white-space: pre;
+      min-height: 360px;
+    }
+
+    .term-body .c-title {
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .term-body .c-art { color: var(--art-teal); }
+    .term-body .c-rule { color: var(--border-strong); }
+    .term-body .c-info { color: var(--text-dim); }
+    .term-body .c-info b { color: var(--accent-hover); font-weight: 600; }
+    .term-body .c-dim { color: var(--text-muted); }
+
+    .term-cursor {
+      display: inline-block;
+      color: var(--accent);
+      animation: blink 1.05s steps(1) infinite;
+    }
+
+    @keyframes blink { 50% { opacity: 0; } }
+
+    @media (prefers-reduced-motion: reduce) {
+      .term-cursor { animation: none; }
+    }
 
     /* ── Cards ── */
     .grid {
@@ -466,8 +571,9 @@
       position: fixed;
       bottom: 24px;
       right: 24px;
-      background: var(--text);
-      color: #fff;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border-strong);
       padding: 11px 18px;
       border-radius: var(--radius-sm);
       font-size: 13px;
@@ -666,6 +772,12 @@
         <button data-module="connect">Connect</button>
       </nav>
 
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle color theme">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        <span id="theme-label">Dark mode</span>
+      </button>
+
       <div class="status">
         <div><strong>Host</strong> <span id="host-label">—</span></div>
         <div><strong>Camera</strong> <em>:8080 / :8081</em></div>
@@ -676,6 +788,50 @@
 
     <main>
       <section class="module active" id="overview">
+<pre id="banner-src" hidden>
+     ██╗ ███████╗ ████████╗ ███╗   ███╗  █████╗  ██╗  ██╗
+     ██║ ██╔════╝ ╚══██╔══╝ ████╗ ████║ ██╔══██╗ ╚██╗██╔╝
+     ██║ █████╗      ██║    ██╔████╔██║ ███████║  ╚███╔╝ 
+██   ██║ ██╔══╝      ██║    ██║╚██╔╝██║ ██╔══██║  ██╔██╗ 
+╚█████╔╝ ███████╗    ██║    ██║ ╚═╝ ██║ ██║  ██║ ██╔╝ ██╗
+ ╚════╝  ╚══════╝    ╚═╝    ╚═╝     ╚═╝ ╚═╝  ╚═╝ ╚═╝  ╚═╝
+          R O B O T I C   A R M   C O N T R O L
+
+
+                                                        ;,
+ `@,                                                  ,@@
+  `@@,                                              ;@;'
+   ,:;@;,                                        .;@;:,
+   `@;:;@@;,                                  ,;@@;::@'
+     `@;::;@@;,.                          .,;@@;;:;@'
+       ;:;;;;;@@@@,;@, ,          , ,@;,;@@@;;;;;;:
+       `:;;:;;;;;@@@@@@@;  .;;;;,  ;@@@@@@@;;;;;;;;;'
+         `:;;@@;:;@@@@@@@@  ,;;,  @@@@@@@@;;;;@@;:'
+            `::;;;;@@@;;@@@;';;;,@@;:@@@@;;:;;;'
+              `:;;;;;@@@;;:@@;;@@;;@@@@;;;;;:'
+                   ```;@@@@@@@@@@@@@@;'''
+                        ;@@@@;;@@@@;
+                      ,@@@;:;;;;;;@@@,
+                     ;:;@:',;;;;@,';@;
+                           ;@@;;@@;
+                           ;@@@;@@;
+                           :;@;;;@;
+                            ;;;;;;'
+                            `;;;;;
+                             `:;'
+                              `'
+  ────────────────────────────────────────────────────────
+  Platform  :  Hiwonder JetMax  |  Jetson Nano
+  ROS       :  Melodic (Ubuntu 18.04)
+  Network   :  192.168.1.50 (eth)  |  100.65.198.107 (vpn)
+  Repo      :  github.com/Trylen22/jetmax-control
+  Contact   :  tbs024@latech.edu  |  318-312-1782
+  ────────────────────────────────────────────────────────
+</pre>
+        <div class="hero-terminal">
+          <pre class="term-body" id="term-body"><span class="term-cursor">█</span></pre>
+        </div>
+
         <h1>Overview</h1>
         <p class="subtitle">Quick access to camera, arm jogging, and PLC tools.</p>
         <div class="grid">
@@ -992,6 +1148,67 @@
     pollDetection();
 
     document.getElementById('ssh-link').href = `ssh://hiwonder@${HOST}`;
+
+    // ── Theme toggle ──────────────────────────────────────────────
+    function applyThemeLabel() {
+      const t = document.documentElement.getAttribute('data-theme');
+      const label = document.getElementById('theme-label');
+      if (label) label.textContent = t === 'dark' ? 'Light mode' : 'Dark mode';
+    }
+
+    function toggleTheme() {
+      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem('jetmax-theme', next); } catch (e) {}
+      applyThemeLabel();
+    }
+
+    document.getElementById('theme-toggle')?.addEventListener('click', toggleTheme);
+    applyThemeLabel();
+
+    // ── Terminal boot banner ──────────────────────────────────────
+    function bootBanner() {
+      const src = document.getElementById('banner-src');
+      const body = document.getElementById('term-body');
+      if (!src || !body) return;
+      const lines = src.textContent.replace(/^\n+/, '').replace(/\s+$/, '').split('\n');
+      const cursor = '<span class="term-cursor">█</span>';
+
+      const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+      function classify(line) {
+        if (/█/.test(line) || /R O B O T I C/.test(line)) return 'c-title';
+        if (/^\s*─/.test(line)) return 'c-rule';
+        if (/(Platform|ROS|Network|Repo|Contact)\s*:/.test(line)) return 'c-info';
+        if (line.trim() !== '') return 'c-art';
+        return 'c-dim';
+      }
+
+      function fmt(line) {
+        const cls = classify(line);
+        if (cls === 'c-info') {
+          const idx = line.indexOf(':');
+          return `<span class="c-info"><b>${esc(line.slice(0, idx))}</b>${esc(line.slice(idx))}</span>`;
+        }
+        return `<span class="${cls}">${esc(line)}</span>`;
+      }
+
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduce) {
+        body.innerHTML = lines.map(fmt).join('\n') + '\n' + cursor;
+        return;
+      }
+
+      let i = 0;
+      body.innerHTML = cursor;
+      (function step() {
+        if (i >= lines.length) return;
+        body.innerHTML = lines.slice(0, i + 1).map(fmt).join('\n') + '\n' + cursor;
+        i++;
+        setTimeout(step, 42);
+      })();
+    }
+    bootBanner();
 
     function showModule(id) {
       document.querySelectorAll('.module').forEach(m => m.classList.remove('active'));
