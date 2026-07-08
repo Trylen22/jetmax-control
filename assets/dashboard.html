@@ -480,8 +480,8 @@
         <h1>CAMERA</h1>
         <p class="subtitle">Raw feed or vision overlay with green-block detection boxes.</p>
         <div class="actions" style="margin-bottom:14px">
-          <button class="btn" id="btn-cam-raw" onclick="setCameraMode('raw')">Raw feed</button>
-          <button class="btn primary" id="btn-cam-vision" onclick="setCameraMode('vision')">Vision overlay</button>
+          <button class="btn primary" id="btn-cam-raw" onclick="setCameraMode('raw')">Raw feed</button>
+          <button class="btn" id="btn-cam-vision" onclick="setCameraMode('vision')">Vision overlay</button>
           <span class="tag" id="detection-badge" style="align-self:center">—</span>
         </div>
         <div class="camera-wrap">
@@ -548,6 +548,9 @@
             </div>
 
             <div class="actions">
+              <button class="btn primary" id="btn-cockpit-raw" onclick="setCockpitCameraMode('raw')">Raw</button>
+              <button class="btn" id="btn-cockpit-vision" onclick="setCockpitCameraMode('vision')">Vision</button>
+              <button class="btn" onclick="reloadArmCam()">Reload cam</button>
               <button class="btn primary" id="btn-enable" onclick="toggleArmControl()">Enable control</button>
               <button class="btn" onclick="closeWasdCockpit()">← Back</button>
             </div>
@@ -672,11 +675,41 @@
     const CAM_RAW_URL = `http://${HOST}:8080/stream?topic=/usb_cam/image_rect_color`;
     const CAM_VISION_URL = `http://${HOST}:8081/`;
     const DETECTION_URL = `http://${HOST}:8081/detection.json`;
-    let cameraMode = 'vision';
+    let cameraMode = 'raw';
+    let cockpitCamMode = 'raw';
     let detectionPollTimer = null;
+
+    function camUrlWithBust(url) {
+      const sep = url.includes('?') ? '&' : '?';
+      return url + sep + 't=' + Date.now();
+    }
 
     function activeCamUrl() {
       return cameraMode === 'vision' ? CAM_VISION_URL : CAM_RAW_URL;
+    }
+
+    function cockpitCamUrl() {
+      return cockpitCamMode === 'vision' ? CAM_VISION_URL : CAM_RAW_URL;
+    }
+
+    function reloadArmCam() {
+      const img = document.getElementById('arm-cam-feed');
+      if (!img) return;
+      const bust = camUrlWithBust(cockpitCamUrl());
+      // MJPEG streams fail if src was assigned while the panel was display:none
+      img.removeAttribute('src');
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          img.src = bust;
+        });
+      });
+    }
+
+    function setCockpitCameraMode(mode) {
+      cockpitCamMode = mode;
+      document.getElementById('btn-cockpit-raw').classList.toggle('primary', mode === 'raw');
+      document.getElementById('btn-cockpit-vision').classList.toggle('primary', mode === 'vision');
+      reloadArmCam();
     }
 
     function setCameraMode(mode) {
@@ -684,13 +717,12 @@
       document.getElementById('btn-cam-raw').classList.toggle('primary', mode === 'raw');
       document.getElementById('btn-cam-vision').classList.toggle('primary', mode === 'vision');
       reloadCamera();
-      if (document.getElementById('arm-cockpit').classList.contains('active')) {
-        document.getElementById('arm-cam-feed').src = activeCamUrl() + (mode === 'raw' ? ('&t=' + Date.now()) : ('?t=' + Date.now()));
-      }
     }
 
     async function pollDetection() {
-      if (cameraMode !== 'vision') {
+      const visionActive = cameraMode === 'vision' ||
+        (document.getElementById('arm-cockpit').classList.contains('active') && cockpitCamMode === 'vision');
+      if (!visionActive) {
         setDetectionBadge('RAW FEED', false);
         return;
       }
@@ -747,9 +779,8 @@
 
     function reloadCamera() {
       const img = document.getElementById('cam-feed');
+      img.src = camUrlWithBust(activeCamUrl());
       const url = activeCamUrl();
-      const sep = url.includes('?') ? '&' : '?';
-      img.src = url + sep + 't=' + Date.now();
       document.getElementById('cam-url').textContent = url;
       document.getElementById('cam-copy').dataset.copy = url;
       document.getElementById('cam-copy').textContent = url;
@@ -789,7 +820,7 @@
       showModule('arm');
       document.getElementById('arm-launcher').classList.add('hidden');
       document.getElementById('arm-cockpit').classList.add('active');
-      document.getElementById('arm-cam-feed').src = activeCamUrl() + '?t=' + Date.now();
+      setCockpitCameraMode(cockpitCamMode);
       if (!armSessionStarted) startArmSession();
       if (!armPollTimer) armPollTimer = setInterval(refreshArmState, 350);
       document.getElementById('control-banner').focus();
