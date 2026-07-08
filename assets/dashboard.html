@@ -438,7 +438,7 @@
 
       <div class="status">
         <div><strong>Host</strong> <span id="host-label">—</span></div>
-        <div><strong>Camera</strong> :8080</div>
+        <div><strong>Camera</strong> :8080 raw · :8081 vision</div>
         <div><strong>Deck</strong> :8888</div>
         <div><strong>Repo</strong> ~/jetmax-control</div>
       </div>
@@ -478,7 +478,12 @@
 
       <section class="module" id="camera">
         <h1>CAMERA</h1>
-        <p class="subtitle">Live MJPEG from <code>/usb_cam/image_rect_color</code></p>
+        <p class="subtitle">Raw feed or vision overlay with green-block detection boxes.</p>
+        <div class="actions" style="margin-bottom:14px">
+          <button class="btn" id="btn-cam-raw" onclick="setCameraMode('raw')">Raw feed</button>
+          <button class="btn primary" id="btn-cam-vision" onclick="setCameraMode('vision')">Vision overlay</button>
+          <span class="tag" id="detection-badge" style="align-self:center">—</span>
+        </div>
         <div class="camera-wrap">
           <img id="cam-feed" alt="JetMax camera feed" />
           <div class="camera-overlay" id="cam-url">loading stream…</div>
@@ -522,6 +527,7 @@
         <div class="cockpit" id="arm-cockpit">
           <div class="cockpit-camera">
             <span class="live-badge" id="cockpit-live">STANDBY</span>
+            <span class="live-badge" id="detect-badge" style="left:auto;right:12px">SCAN</span>
             <img id="arm-cam-feed" alt="Live arm camera" />
           </div>
 
@@ -606,8 +612,15 @@
 
       <section class="module" id="vision">
         <h1>VISION</h1>
-        <p class="subtitle">Conveyor belt pick-and-place scripts</p>
+        <p class="subtitle">Conveyor belt pick-and-place scripts + annotated camera stream.</p>
         <div class="grid">
+          <div class="card">
+            <span class="tag">LIVE</span>
+            <h2>Vision Overlay Stream</h2>
+            <p>Green bounding box + offset readout on the camera feed (port 8081).</p>
+            <button class="cmd" data-copy="cd ~/jetmax-control && ./run.sh vision-stream">./run.sh vision-stream</button>
+            <button class="btn primary" style="margin-top:10px" onclick="showModule('camera'); setCameraMode('vision')">Open in Camera →</button>
+          </div>
           <div class="card">
             <h2>Belt Vision</h2>
             <p>Green block detection + pick loop.</p>
@@ -656,16 +669,68 @@
 
   <script>
     const HOST = window.location.hostname || '100.65.198.107';
-    const CAM_URL = `http://${HOST}:8080/stream?topic=/usb_cam/image_rect_color`;
+    const CAM_RAW_URL = `http://${HOST}:8080/stream?topic=/usb_cam/image_rect_color`;
+    const CAM_VISION_URL = `http://${HOST}:8081/`;
+    const DETECTION_URL = `http://${HOST}:8081/detection.json`;
+    let cameraMode = 'vision';
+    let detectionPollTimer = null;
+
+    function activeCamUrl() {
+      return cameraMode === 'vision' ? CAM_VISION_URL : CAM_RAW_URL;
+    }
+
+    function setCameraMode(mode) {
+      cameraMode = mode;
+      document.getElementById('btn-cam-raw').classList.toggle('primary', mode === 'raw');
+      document.getElementById('btn-cam-vision').classList.toggle('primary', mode === 'vision');
+      reloadCamera();
+      if (document.getElementById('arm-cockpit').classList.contains('active')) {
+        document.getElementById('arm-cam-feed').src = activeCamUrl() + (mode === 'raw' ? ('&t=' + Date.now()) : ('?t=' + Date.now()));
+      }
+    }
+
+    async function pollDetection() {
+      if (cameraMode !== 'vision') {
+        setDetectionBadge('RAW FEED', false);
+        return;
+      }
+      try {
+        const d = await fetch(DETECTION_URL, { cache: 'no-store' }).then(r => r.json());
+        if (d.detected) {
+          setDetectionBadge(`TARGET  Δx=${d.arm_dx_mm}mm Δy=${d.arm_dy_mm}mm`, true);
+        } else {
+          setDetectionBadge('SCANNING…', false);
+        }
+      } catch (_) {
+        setDetectionBadge('VISION OFF — run ./run.sh vision-stream', false);
+      }
+    }
+
+    function setDetectionBadge(text, on) {
+      const badge = document.getElementById('detection-badge');
+      const cockpit = document.getElementById('detect-badge');
+      if (badge) {
+        badge.textContent = text;
+        badge.style.color = on ? 'var(--accent)' : 'var(--muted)';
+        badge.style.borderColor = on ? 'var(--accent-dim)' : 'var(--line)';
+      }
+      if (cockpit) {
+        cockpit.textContent = on ? 'DETECTED' : 'SCAN';
+        cockpit.classList.toggle('on', on);
+      }
+    }
 
     document.getElementById('host-label').textContent = HOST;
-    document.getElementById('cam-url').textContent = CAM_URL;
-    document.getElementById('cam-feed').src = CAM_URL;
-    document.getElementById('cam-open').href = CAM_URL;
-    document.getElementById('cam-link').href = CAM_URL;
+    document.getElementById('cam-url').textContent = activeCamUrl();
+    document.getElementById('cam-feed').src = activeCamUrl();
+    document.getElementById('cam-open').href = activeCamUrl();
+    document.getElementById('cam-link').href = CAM_RAW_URL;
+    document.getElementById('cam-copy').dataset.copy = activeCamUrl();
+    document.getElementById('cam-copy').textContent = activeCamUrl();
+    detectionPollTimer = setInterval(pollDetection, 500);
+    pollDetection();
+
     document.getElementById('ssh-link').href = `ssh://hiwonder@${HOST}`;
-    document.getElementById('cam-copy').dataset.copy = CAM_URL;
-    document.getElementById('cam-copy').textContent = CAM_URL;
 
     function showModule(id) {
       document.querySelectorAll('.module').forEach(m => m.classList.remove('active'));
@@ -682,7 +747,12 @@
 
     function reloadCamera() {
       const img = document.getElementById('cam-feed');
-      img.src = CAM_URL + '&t=' + Date.now();
+      const url = activeCamUrl();
+      const sep = url.includes('?') ? '&' : '?';
+      img.src = url + sep + 't=' + Date.now();
+      document.getElementById('cam-url').textContent = url;
+      document.getElementById('cam-copy').dataset.copy = url;
+      document.getElementById('cam-copy').textContent = url;
     }
 
     function toast(msg) {
@@ -719,7 +789,7 @@
       showModule('arm');
       document.getElementById('arm-launcher').classList.add('hidden');
       document.getElementById('arm-cockpit').classList.add('active');
-      document.getElementById('arm-cam-feed').src = CAM_URL + '&t=' + Date.now();
+      document.getElementById('arm-cam-feed').src = activeCamUrl() + '?t=' + Date.now();
       if (!armSessionStarted) startArmSession();
       if (!armPollTimer) armPollTimer = setInterval(refreshArmState, 350);
       document.getElementById('control-banner').focus();
