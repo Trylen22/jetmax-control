@@ -12,6 +12,7 @@ import json
 import os
 import sys
 from http.server import HTTPServer, SimpleHTTPRequestHandler
+from socketserver import ThreadingMixIn
 
 PORT = 8888
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -22,6 +23,11 @@ try:
 except ImportError:
     sys.path.insert(0, os.path.dirname(__file__))
     from arm_bridge import get_bridge
+
+
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    daemon_threads = True
+    allow_reuse_address = True
 
 
 class ControlDeckHandler(SimpleHTTPRequestHandler):
@@ -66,6 +72,8 @@ class ControlDeckHandler(SimpleHTTPRequestHandler):
                 return self._json_response(200, bridge.stop_session())
             if path == "/api/jog":
                 return self._json_response(200, bridge.jog(data.get("key", "")))
+            if path == "/api/pick":
+                return self._json_response(200, bridge.pick_target())
             if path == "/api/positions/save":
                 return self._json_response(200, bridge.save_position(data.get("name", "")))
             if path == "/api/positions/go":
@@ -106,7 +114,7 @@ def main():
     print("  Camera     http://%s:8080/stream?topic=/usb_cam/image_rect_color" % host)
     print("\nArm Control module runs WASD in the browser.")
     print("Ctrl+C to stop.\n")
-    server = HTTPServer(("0.0.0.0", PORT), ControlDeckHandler)
+    server = ThreadedHTTPServer(("0.0.0.0", PORT), ControlDeckHandler)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

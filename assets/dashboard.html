@@ -1113,7 +1113,7 @@
               <img src="jetmax-arm-sm.webp" alt="JetMax reference" width="72" height="72" loading="lazy" />
               <div class="hint">
                 <strong>Orientation cue</strong>
-                A/D → X · W/S → Y · R/F → Z · Space → home
+                A/D → X · W/S → Y · R/F → Z · Space → home · P → pick
               </div>
             </div>
 
@@ -1132,6 +1132,7 @@
               <button class="btn" id="btn-cockpit-vision" onclick="setCockpitCameraMode('vision')">Vision</button>
               <button class="btn" onclick="reloadArmCam()">Reload cam</button>
               <button class="btn primary" id="btn-enable" onclick="toggleArmControl()">Enable control</button>
+              <button class="btn primary" id="btn-pick" onclick="runVisionPick()" title="Pick detected target, drop at home (P)">Pick → home</button>
               <button class="btn" onclick="closeWasdCockpit()">← Back</button>
             </div>
 
@@ -1146,6 +1147,7 @@
               <button data-key=" ">HOME</button>
               <button data-key="f">F ↓</button>
             </div>
+            <button class="btn primary" style="width:100%" onclick="runVisionPick()">P — Pick target → drop at home</button>
 
             <div class="card" style="min-height:auto">
               <h2>Saved positions</h2>
@@ -1513,14 +1515,43 @@
       const btn = document.getElementById('btn-enable');
       if (enable) {
         banner.classList.add('live');
-        banner.textContent = 'Control active — WASD / R F / Space · click pad or type';
+        banner.textContent = 'Control active — WASD / R F / Space / P pick · click pad or type';
         btn.textContent = 'Disable control';
         banner.focus();
         toast('Control enabled');
       } else {
         banner.classList.remove('live');
-        banner.textContent = 'Click "Enable control" — then click this panel and use WASD / R F / Space';
+        banner.textContent = 'Click "Enable control" — then click this panel and use WASD / R F / Space / P';
         btn.textContent = 'Enable control';
+      }
+    }
+
+    let pickInFlight = false;
+    async function runVisionPick() {
+      if (pickInFlight) return toast('Pick already running…');
+      if (!armSessionStarted) return toast('Open cockpit / connect arm first');
+      if (!armControlEnabled) return toast('Enable control first');
+      // Vision overlay helps the operator confirm the target
+      if (cockpitCamMode !== 'vision') setCockpitCameraMode('vision');
+      pickInFlight = true;
+      const btn = document.getElementById('btn-pick');
+      if (btn) { btn.disabled = true; btn.textContent = 'Picking…'; }
+      toast('Picking target…');
+      try {
+        const res = await api('/api/pick', 'POST', {});
+        if (res.ok) {
+          toast('Dropped at home');
+          refreshArmState();
+        } else if (res.reason === 'no_target') {
+          toast(res.hint || 'No target — keep block in view');
+        } else {
+          toast(res.reason || res.error || 'Pick failed');
+        }
+      } catch (_) {
+        toast('Pick request failed');
+      } finally {
+        pickInFlight = false;
+        if (btn) { btn.disabled = false; btn.textContent = 'Pick → home'; }
       }
     }
 
@@ -1570,6 +1601,11 @@
     document.getElementById('control-banner').addEventListener('keydown', (e) => {
       if (!armControlEnabled) return;
       const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      if (key === 'p') {
+        e.preventDefault();
+        runVisionPick();
+        return;
+      }
       const allowed = ['w','a','s','d','r','f',' '];
       if (!allowed.includes(key)) return;
       e.preventDefault();
@@ -1579,10 +1615,15 @@
     document.addEventListener('keydown', (e) => {
       if (!armControlEnabled) return;
       if (!document.getElementById('arm-cockpit').classList.contains('active')) return;
+      if (e.target.matches('input, select, textarea')) return;
       const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      if (key === 'p') {
+        e.preventDefault();
+        runVisionPick();
+        return;
+      }
       const allowed = ['w','a','s','d','r','f',' '];
       if (!allowed.includes(key)) return;
-      if (e.target.matches('input, select, textarea')) return;
       e.preventDefault();
       sendJog(key);
     });

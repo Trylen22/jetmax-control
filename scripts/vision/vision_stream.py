@@ -29,8 +29,14 @@ sys.path.insert(0, os.path.join(REPO_ROOT, "lib"))
 from green_detect import annotate_frame, detect_green  # noqa: E402
 
 PORT = 8081
+# Keep a positive detection sticky so the UI / pick API don't flicker off
+# when a frame briefly fails the HSV mask.
+DETECTION_HOLD_SEC = 1.5
+
 latest_jpg = [None]
 last_detection = [{"detected": False, "updated": 0}]
+held_detection = [None]  # last positive detection dict (with raw fields)
+hold_until = [0.0]
 frame_lock = threading.Lock()
 
 
@@ -41,23 +47,36 @@ def image_callback(ros_image):
         buffer=ros_image.data,
     )
     detection = detect_green(img)
-    annotated = annotate_frame(img, detection)
+    now = time.time()
+
+    if detection is not None:
+        held_detection[0] = detection
+        hold_until[0] = now + DETECTION_HOLD_SEC
+        display = detection
+    elif held_detection[0] is not None and now < hold_until[0]:
+        display = held_detection[0]
+    else:
+        held_detection[0] = None
+        display = None
+
+    annotated = annotate_frame(img, display)
 
     ok, jpg = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, 82])
     if not ok:
         return
 
     payload = {
-        "detected": detection is not None,
-        "updated": time.time(),
+        "detected": display is not None,
+        "updated": now,
+        "held": display is not None and detection is None,
     }
-    if detection:
+    if display:
         payload.update({
-            "cx": detection["cx"],
-            "cy": detection["cy"],
-            "area": detection["area"],
-            "arm_dx_mm": detection["arm_dx_mm"],
-            "arm_dy_mm": detection["arm_dy_mm"],
+            "cx": display["cx"],
+            "cy": display["cy"],
+            "area": display["area"],
+            "arm_dx_mm": display["arm_dx_mm"],
+            "arm_dy_mm": display["arm_dy_mm"],
         })
 
     with frame_lock:

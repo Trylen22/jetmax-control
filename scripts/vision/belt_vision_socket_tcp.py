@@ -45,7 +45,7 @@ PLACE_Z = PICK_Z
 
 GREEN_LOWER = np.array([35, 40, 50])   # green through cyan/teal
 GREEN_UPPER = np.array([110, 255, 255])
-MIN_AREA = 800
+MIN_AREA = 500
 
 MM_PER_PIXEL = 0.25
 AXIS_FLIP_X = 1
