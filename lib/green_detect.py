@@ -3,8 +3,9 @@ import cv2
 import numpy as np
 
 # Match belt_vision.py defaults
-GREEN_LOWER = np.array([35, 60, 60])
-GREEN_UPPER = np.array([85, 255, 255])
+# Green through cyan/teal (OpenCV H 0-179). Widened so light cyan blocks register.
+GREEN_LOWER = np.array([35, 40, 50])
+GREEN_UPPER = np.array([110, 255, 255])
 MIN_AREA = 800
 MM_PER_PIXEL = 0.25
 AXIS_FLIP_X = 1

@@ -39,8 +39,8 @@ IDLE_TIMEOUT = 360	                     # seconds with no block before going hom
 
 # ── Vision tuning ─────────────────────────────────────────────────────────────
 
-GREEN_LOWER = np.array([ 35,  60,  60])   # HSV lower bound for green
-GREEN_UPPER = np.array([ 85, 255, 255])   # HSV upper bound for green
+GREEN_LOWER = np.array([ 35,  40,  50])   # HSV lower — green through cyan/teal
+GREEN_UPPER = np.array([110, 255, 255])   # HSV upper — includes light cyan blocks
 MIN_AREA    = 800                          # ignore blobs smaller than this (px²)
 
 # ── Pixel → mm conversion ─────────────────────────────────────────────────────

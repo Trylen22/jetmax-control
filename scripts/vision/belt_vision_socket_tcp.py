@@ -43,8 +43,8 @@ PICK_Z = 124.0
 IDLE_TIMEOUT = 360
 PLACE_Z = PICK_Z
 
-GREEN_LOWER = np.array([35, 60, 60])
-GREEN_UPPER = np.array([85, 255, 255])
+GREEN_LOWER = np.array([35, 40, 50])   # green through cyan/teal
+GREEN_UPPER = np.array([110, 255, 255])
 MIN_AREA = 800
 
 MM_PER_PIXEL = 0.25
