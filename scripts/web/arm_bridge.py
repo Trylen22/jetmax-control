@@ -44,6 +44,7 @@ class ArmBridge:
         self.session_active = False
         self.busy = False
         self.busy_lock = threading.Lock()
+        self.last_pick = None  # {"x", "y"} from last successful vision pick
         rospy.Subscriber("/jetmax/status", JetMaxState, self._status_cb)
 
     def _status_cb(self, msg):
@@ -63,14 +64,43 @@ class ArmBridge:
     def get_state(self):
         with self.pos_lock:
             x, y, z = self.position[0], self.position[1], self.position[2]
-        return {
+        state = {
             "session_active": self.session_active,
             "arm_connected": self.pub.get_num_connections() > 0,
             "busy": self.busy,
             "x": round(x, 1),
             "y": round(y, 1),
             "z": round(z, 1),
+            "last_pick": None,
         }
+        if self.last_pick:
+            state["last_pick"] = {
+                "x": round(self.last_pick["x"], 1),
+                "y": round(self.last_pick["y"], 1),
+            }
+        return state
+
+    def _run_pick_place(self, from_x, from_y, to_x, to_y):
+        """Grab at (from_x, from_y) and drop at (to_x, to_y)."""
+        # Approach source
+        self.move(from_x, from_y, APPROACH_Z, duration=1.2)
+        time.sleep(1.4)
+        self.move(from_x, from_y, PICK_Z, duration=1.0)
+        time.sleep(1.2)
+        self.suction(True)
+        time.sleep(0.4)
+        self.move(from_x, from_y, APPROACH_Z, duration=1.0)
+        time.sleep(1.2)
+        # Carry to destination
+        self.move(to_x, to_y, APPROACH_Z, duration=1.5)
+        time.sleep(1.7)
+        self.move(to_x, to_y, PICK_Z, duration=1.0)
+        time.sleep(1.2)
+        self.suction(False)
+        time.sleep(0.3)
+        self.move(to_x, to_y, APPROACH_Z, duration=1.0)
+        time.sleep(1.1)
+        self.last_move = time.time()
 
     def move(self, x, y, z, duration=DURATION):
         msg = SetJetMax()
@@ -209,29 +239,18 @@ class ArmBridge:
 
             pick_x = wx + dx + TOOL_OFFSET_X
             pick_y = wy + dy + TOOL_OFFSET_Y
+            self.last_pick = {"x": pick_x, "y": pick_y}
 
-            # Approach above target
-            self.move(pick_x, pick_y, APPROACH_Z, duration=1.2)
-            time.sleep(1.4)
-            # Descend and grab
-            self.move(pick_x, pick_y, PICK_Z, duration=1.0)
-            time.sleep(1.2)
-            self.suction(True)
-            time.sleep(0.4)
-            # Lift
-            self.move(pick_x, pick_y, APPROACH_Z, duration=1.0)
-            time.sleep(1.2)
-            # Carry to home and drop
             hx, hy, hz = HOME
-            self.move(hx, hy, APPROACH_Z, duration=1.5)
-            time.sleep(1.7)
-            self.move(hx, hy, PICK_Z, duration=1.0)
-            time.sleep(1.2)
-            self.suction(False)
-            time.sleep(0.3)
+            sys.stdout.write(
+                "[deck] pick_target: (%.1f, %.1f) → home (%.1f, %.1f)\n"
+                % (pick_x, pick_y, hx, hy)
+            )
+            sys.stdout.flush()
+            self._run_pick_place(pick_x, pick_y, hx, hy)
+            # Park at home height after drop
             self.move(hx, hy, hz, duration=1.0)
             time.sleep(1.1)
-            self.last_move = time.time()
 
             state = self.get_state()
             state["ok"] = True
@@ -250,6 +269,56 @@ class ArmBridge:
             except Exception:
                 pass
             return {"ok": False, "reason": "pick_failed", "error": str(exc)}
+        finally:
+            with self.busy_lock:
+                self.busy = False
+
+    def return_target(self):
+        """
+        Grab the block from HOME (where Pick dropped it) and place it
+        back at the last vision-pick coordinates.
+        """
+        if not self.session_active:
+            return {"ok": False, "reason": "session_inactive"}
+        if not self.wait_for_arm(timeout=2.0):
+            return {"ok": False, "reason": "arm_disconnected"}
+        if not self.last_pick:
+            return {
+                "ok": False,
+                "reason": "no_last_pick",
+                "hint": "Run Pick → home first so the origin is remembered.",
+            }
+
+        with self.busy_lock:
+            if self.busy:
+                return {"ok": False, "reason": "busy"}
+            self.busy = True
+
+        try:
+            hx, hy, hz = HOME
+            tx = float(self.last_pick["x"])
+            ty = float(self.last_pick["y"])
+            sys.stdout.write(
+                "[deck] return_target: home (%.1f, %.1f) → origin (%.1f, %.1f)\n"
+                % (hx, hy, tx, ty)
+            )
+            sys.stdout.flush()
+            self._run_pick_place(hx, hy, tx, ty)
+            # Leave arm above the returned spot, then park at home
+            self.move(hx, hy, hz, duration=1.5)
+            time.sleep(1.6)
+
+            state = self.get_state()
+            state["ok"] = True
+            state["returned"] = {"x": round(tx, 1), "y": round(ty, 1)}
+            state["message"] = "returned target to origin"
+            return state
+        except Exception as exc:
+            try:
+                self.suction(False)
+            except Exception:
+                pass
+            return {"ok": False, "reason": "return_failed", "error": str(exc)}
         finally:
             with self.busy_lock:
                 self.busy = False

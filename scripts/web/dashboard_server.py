@@ -74,6 +74,8 @@ class ControlDeckHandler(SimpleHTTPRequestHandler):
                 return self._json_response(200, bridge.jog(data.get("key", "")))
             if path == "/api/pick":
                 return self._json_response(200, bridge.pick_target())
+            if path == "/api/return":
+                return self._json_response(200, bridge.return_target())
             if path == "/api/positions/save":
                 return self._json_response(200, bridge.save_position(data.get("name", "")))
             if path == "/api/positions/go":
