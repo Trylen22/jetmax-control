@@ -1556,15 +1556,16 @@
       pickInFlight = true;
       const btn = document.getElementById('btn-pick');
       if (btn) { btn.disabled = true; btn.textContent = 'Picking…'; }
-      toast('Picking target…');
+      toast('Centering on target…');
       try {
         const res = await api('/api/pick', 'POST', {});
         if (res.ok) {
-          toast('Dropped at home');
+          const iters = res.picked && res.picked.iters != null ? ` (${res.picked.iters} steps)` : '';
+          toast('Centered & dropped at home' + iters);
           setReturnEnabled(true);
           refreshArmState();
-        } else if (res.reason === 'no_target') {
-          toast(res.hint || 'No target — keep block in view');
+        } else if (res.reason === 'no_target' || res.reason === 'center_timeout') {
+          toast(res.hint || 'Could not center on target');
         } else if (res.reason === 'session_inactive') {
           toast('Session inactive — reopen cockpit');
         } else {

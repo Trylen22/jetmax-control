@@ -19,11 +19,14 @@ STEP = 10
 DURATION = 0.3
 HOME = (0.0, -160.0, 200.0)
 
-# Vision pick — same tuning as belt_vision.py (watch from current XY)
+# Vision pick — closed-loop centering then grab
 APPROACH_Z = 180.0
-PICK_Z = 100.0  # grab / release height (was 110 — still too high for clean home grab)
-TOOL_OFFSET_X = -37.0
+PICK_Z = 100.0  # grab / release height
+TOOL_OFFSET_X = -37.0  # camera → sucker (applied after centering)
 TOOL_OFFSET_Y = 5.0
+CENTER_TOL_MM = 4.0    # stop when |offset| under this
+CENTER_GAIN = 0.55     # fraction of offset to move each step (avoids overshoot)
+CENTER_MAX_ITERS = 12
 DETECTION_URL = "http://127.0.0.1:8081/detection.json"
 
 _bridge = None
@@ -201,10 +204,82 @@ class ArmBridge:
             return {"detected": False, "_error": last_err}
         return last
 
+    def _center_on_target(self, timeout=10.0):
+        """
+        Closed-loop visual servo: nudge XY until the blob is near image center.
+        Does NOT apply tool offset — that happens once after centering.
+        Returns (ok, info_dict).
+        """
+        deadline = time.time() + timeout
+        last_dx = last_dy = None
+        iters = 0
+
+        # Work at approach height so the camera sees the block clearly
+        with self.pos_lock:
+            x, y = self.position[0], self.position[1]
+        self.move(x, y, APPROACH_Z, duration=1.0)
+        time.sleep(1.1)
+
+        while iters < CENTER_MAX_ITERS and time.time() < deadline:
+            det = self._wait_for_detection(timeout=1.5)
+            if not det or not det.get("detected"):
+                if last_dx is None:
+                    err = (det or {}).get("_error")
+                    return False, {
+                        "reason": "no_target",
+                        "hint": (
+                            "Vision stream unreachable (%s)." % err
+                            if err else
+                            "No target — keep block in view with Vision overlay on."
+                        ),
+                    }
+                # Lost briefly after we had a lock — retry
+                time.sleep(0.2)
+                continue
+
+            dx = float(det.get("arm_dx_mm", 0))
+            dy = float(det.get("arm_dy_mm", 0))
+            last_dx, last_dy = dx, dy
+            iters += 1
+
+            sys.stdout.write(
+                "[deck] center iter %d: offset dx=%.1f dy=%.1f mm\n" % (iters, dx, dy)
+            )
+            sys.stdout.flush()
+
+            if abs(dx) <= CENTER_TOL_MM and abs(dy) <= CENTER_TOL_MM:
+                with self.pos_lock:
+                    cx, cy = self.position[0], self.position[1]
+                return True, {
+                    "x": cx,
+                    "y": cy,
+                    "dx_mm": dx,
+                    "dy_mm": dy,
+                    "iters": iters,
+                    "area": det.get("area"),
+                }
+
+            # Partial step toward the target (gain < 1 damps overshoot)
+            with self.pos_lock:
+                x, y = self.position[0], self.position[1]
+            nx = x + dx * CENTER_GAIN
+            ny = y + dy * CENTER_GAIN
+            self.move(nx, ny, APPROACH_Z, duration=0.55)
+            time.sleep(0.7)
+
+        return False, {
+            "reason": "center_timeout",
+            "hint": "Could not center on target (last offset dx=%s dy=%s)."
+            % (last_dx, last_dy),
+            "dx_mm": last_dx,
+            "dy_mm": last_dy,
+            "iters": iters,
+        }
+
     def pick_target(self):
         """
-        Vision pick from current XY:
-          detect green/cyan → approach → grab → lift → drop at HOME → release.
+        Vision pick with closed-loop centering:
+          servo until blob is centered → apply tool offset → grab → drop at HOME.
         """
         if not self.session_active:
             return {"ok": False, "reason": "session_inactive"}
@@ -217,38 +292,28 @@ class ArmBridge:
             self.busy = True
 
         try:
-            sys.stdout.write("[deck] pick_target: waiting for detection…\n")
+            sys.stdout.write("[deck] pick_target: centering on target…\n")
             sys.stdout.flush()
-            det = self._wait_for_detection(timeout=4.0)
-            if not det or not det.get("detected"):
-                err = (det or {}).get("_error")
+            ok, info = self._center_on_target(timeout=12.0)
+            if not ok:
                 return {
                     "ok": False,
-                    "reason": "no_target",
-                    "hint": (
-                        "Vision stream unreachable (%s). Is jetmax-vision running?" % err
-                        if err else
-                        "No target — keep block in view with Vision overlay on."
-                    ),
+                    "reason": info.get("reason", "no_target"),
+                    "hint": info.get("hint"),
                 }
 
-            dx = float(det.get("arm_dx_mm", 0))
-            dy = float(det.get("arm_dy_mm", 0))
-            with self.pos_lock:
-                wx, wy, wz = self.position[0], self.position[1], self.position[2]
-
-            pick_x = wx + dx + TOOL_OFFSET_X
-            pick_y = wy + dy + TOOL_OFFSET_Y
+            # Camera is now over the block — shift to sucker frame once
+            pick_x = info["x"] + TOOL_OFFSET_X
+            pick_y = info["y"] + TOOL_OFFSET_Y
             self.last_pick = {"x": pick_x, "y": pick_y}
 
             hx, hy, hz = HOME
             sys.stdout.write(
-                "[deck] pick_target: (%.1f, %.1f) → home (%.1f, %.1f)\n"
-                % (pick_x, pick_y, hx, hy)
+                "[deck] pick_target: centered → tool (%.1f, %.1f) → home (%.1f, %.1f) [%d iters]\n"
+                % (pick_x, pick_y, hx, hy, info.get("iters", 0))
             )
             sys.stdout.flush()
             self._run_pick_place(pick_x, pick_y, hx, hy)
-            # Park at home height after drop
             self.move(hx, hy, hz, duration=1.0)
             time.sleep(1.1)
 
@@ -257,11 +322,12 @@ class ArmBridge:
             state["picked"] = {
                 "pick_x": round(pick_x, 1),
                 "pick_y": round(pick_y, 1),
-                "dx_mm": dx,
-                "dy_mm": dy,
-                "area": det.get("area"),
+                "dx_mm": info.get("dx_mm"),
+                "dy_mm": info.get("dy_mm"),
+                "iters": info.get("iters"),
+                "area": info.get("area"),
             }
-            state["message"] = "picked and dropped at home"
+            state["message"] = "centered, picked, and dropped at home"
             return state
         except Exception as exc:
             try:
