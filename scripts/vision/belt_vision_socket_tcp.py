@@ -43,9 +43,9 @@ PICK_Z = 124.0
 IDLE_TIMEOUT = 360
 PLACE_Z = PICK_Z
 
-GREEN_LOWER = np.array([35, 40, 50])   # green through cyan/teal
+GREEN_LOWER = np.array([35, 55, 55])   # green through cyan; S floor rejects noise
 GREEN_UPPER = np.array([110, 255, 255])
-MIN_AREA = 500
+MIN_AREA = 600
 
 MM_PER_PIXEL = 0.25
 AXIS_FLIP_X = 1

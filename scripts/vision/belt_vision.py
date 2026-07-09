@@ -39,9 +39,9 @@ IDLE_TIMEOUT = 360	                     # seconds with no block before going hom
 
 # ── Vision tuning ─────────────────────────────────────────────────────────────
 
-GREEN_LOWER = np.array([ 35,  40,  50])   # HSV lower — green through cyan/teal
-GREEN_UPPER = np.array([110, 255, 255])   # HSV upper — includes light cyan blocks
-MIN_AREA    = 500                          # ignore blobs smaller than this (px²)
+GREEN_LOWER = np.array([ 35,  55,  55])   # HSV — green through cyan; S floor rejects noise
+GREEN_UPPER = np.array([110, 255, 255])
+MIN_AREA    = 600                          # ignore blobs smaller than this (px²)
 
 # ── Pixel → mm conversion ─────────────────────────────────────────────────────
 # At z=210 height, tune this if the arm consistently over/undershoots.

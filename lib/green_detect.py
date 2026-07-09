@@ -1,27 +1,37 @@
-"""Green block detection + overlay drawing (shared with belt_vision tuning)."""
+"""Green/cyan block detection + overlay drawing (shared with belt_vision tuning)."""
 import cv2
 import numpy as np
 
-# Match belt_vision.py defaults
-# Green through cyan/teal (OpenCV H 0-179). Widened so light cyan blocks register.
-GREEN_LOWER = np.array([35, 40, 50])
+# Green through cyan/teal (OpenCV H 0-179).
+# Saturation floor kept high enough to reject grey/white camera noise speckles.
+GREEN_LOWER = np.array([35, 55, 55])
 GREEN_UPPER = np.array([110, 255, 255])
-MIN_AREA = 500
+MIN_AREA = 600
 MM_PER_PIXEL = 0.25
 AXIS_FLIP_X = 1
 AXIS_FLIP_Y = 1
 
+# Morphology kernel — kills single-pixel / speck noise better than default 3x3 None
+_KERNEL = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+
+
+def _clean_mask(mask):
+    """Open then close to drop speckles and fill small holes in the block."""
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, _KERNEL, iterations=2)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, _KERNEL, iterations=1)
+    return mask
+
 
 def detect_green(frame_rgb):
     """
-    Find the largest green blob in an RGB frame.
+    Find the largest green/cyan blob in an RGB frame.
 
     Returns a dict with pixel/mm info, or None if nothing found.
+    The returned mask is clipped to the chosen contour only (no speckles).
     """
     hsv = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2HSV)
     mask = cv2.inRange(hsv, GREEN_LOWER, GREEN_UPPER)
-    mask = cv2.erode(mask, None, iterations=2)
-    mask = cv2.dilate(mask, None, iterations=2)
+    mask = _clean_mask(mask)
 
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
@@ -34,8 +44,14 @@ def detect_green(frame_rgb):
 
     x, y, w, h = cv2.boundingRect(largest)
     M = cv2.moments(largest)
+    if M["m00"] == 0:
+        return None
     cx = int(M["m10"] / M["m00"])
     cy = int(M["m01"] / M["m00"])
+
+    # Overlay / diagnostics: only the accepted blob, not residual noise
+    blob_mask = np.zeros_like(mask)
+    cv2.drawContours(blob_mask, [largest], -1, 255, thickness=-1)
 
     img_h, img_w = frame_rgb.shape[:2]
     center_x, center_y = img_w // 2, img_h // 2
@@ -54,7 +70,7 @@ def detect_green(frame_rgb):
         "dy_px": dy_px,
         "arm_dx_mm": round(arm_dx_mm, 1),
         "arm_dy_mm": round(arm_dy_mm, 1),
-        "mask": mask,
+        "mask": blob_mask,
     }
 
 
@@ -71,12 +87,11 @@ def annotate_frame(frame_rgb, detection=None):
         x, y, w, h = detection["bbox"]
         cx, cy = detection["cx"], detection["cy"]
 
-        # Green mask tint where blob is
+        # Tint only the accepted blob (not raw noisy mask)
         tint = out.copy()
         tint[detection["mask"] > 0] = (0, 180, 0)
-        cv2.addWeighted(tint, 0.25, out, 0.75, 0, out)
+        cv2.addWeighted(tint, 0.22, out, 0.78, 0, out)
 
-        # Bounding box + corners
         cv2.rectangle(out, (x, y), (x + w, y + h), (0, 255, 120), 2)
         cv2.circle(out, (cx, cy), 8, (0, 255, 120), 2)
         cv2.line(out, (cx0, cy0), (cx, cy), (0, 255, 120), 2)
