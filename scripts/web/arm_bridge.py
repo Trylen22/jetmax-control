@@ -148,21 +148,27 @@ class ArmBridge:
     def _fetch_detection(self):
         try:
             req = Request(DETECTION_URL, headers={"Cache-Control": "no-cache"})
-            with urlopen(req, timeout=1.5) as resp:
+            with urlopen(req, timeout=0.8) as resp:
                 return json.loads(resp.read().decode("utf-8"))
-        except (URLError, OSError, ValueError, json.JSONDecodeError):
-            return None
+        except (URLError, OSError, ValueError, json.JSONDecodeError) as exc:
+            return {"_error": str(exc)}
 
     def _wait_for_detection(self, timeout=4.0):
         """Poll vision-stream until a target is held, or timeout."""
         deadline = time.time() + timeout
         last = None
+        last_err = None
         while time.time() < deadline:
             d = self._fetch_detection()
-            last = d
-            if d and d.get("detected"):
-                return d
+            if d and d.get("_error"):
+                last_err = d["_error"]
+            else:
+                last = d
+                if d and d.get("detected"):
+                    return d
             time.sleep(0.15)
+        if last is None and last_err:
+            return {"detected": False, "_error": last_err}
         return last
 
     def pick_target(self):
@@ -181,12 +187,19 @@ class ArmBridge:
             self.busy = True
 
         try:
+            sys.stdout.write("[deck] pick_target: waiting for detection…\n")
+            sys.stdout.flush()
             det = self._wait_for_detection(timeout=4.0)
             if not det or not det.get("detected"):
+                err = (det or {}).get("_error")
                 return {
                     "ok": False,
                     "reason": "no_target",
-                    "hint": "Enable Vision overlay and keep the block in view. Is vision-stream running?",
+                    "hint": (
+                        "Vision stream unreachable (%s). Is jetmax-vision running?" % err
+                        if err else
+                        "No target — keep block in view with Vision overlay on."
+                    ),
                 }
 
             dx = float(det.get("arm_dx_mm", 0))

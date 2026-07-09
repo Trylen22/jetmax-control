@@ -22,6 +22,7 @@ import cv2
 import numpy as np
 import rospy
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from socketserver import ThreadingMixIn
 from sensor_msgs.msg import Image
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -84,6 +85,11 @@ def image_callback(ros_image):
         last_detection[0] = payload
 
 
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
+
 class VisionStreamHandler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         if self.path.startswith("/detection"):
@@ -126,7 +132,7 @@ def main():
     rospy.init_node("vision_stream", anonymous=True)
     rospy.Subscriber("/usb_cam/image_rect_color", Image, image_callback)
 
-    server = HTTPServer(("0.0.0.0", PORT), VisionStreamHandler)
+    server = ThreadedHTTPServer(("0.0.0.0", PORT), VisionStreamHandler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
 

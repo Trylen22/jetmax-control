@@ -1529,8 +1529,13 @@
     let pickInFlight = false;
     async function runVisionPick() {
       if (pickInFlight) return toast('Pick already running…');
-      if (!armSessionStarted) return toast('Open cockpit / connect arm first');
-      if (!armControlEnabled) return toast('Enable control first');
+      if (!armSessionStarted) {
+        toast('Connecting arm…');
+        await startArmSession();
+      }
+      if (!armControlEnabled) {
+        await toggleArmControl(true);
+      }
       // Vision overlay helps the operator confirm the target
       if (cockpitCamMode !== 'vision') setCockpitCameraMode('vision');
       pickInFlight = true;
@@ -1544,11 +1549,14 @@
           refreshArmState();
         } else if (res.reason === 'no_target') {
           toast(res.hint || 'No target — keep block in view');
+        } else if (res.reason === 'session_inactive') {
+          toast('Session inactive — reopen cockpit');
         } else {
           toast(res.reason || res.error || 'Pick failed');
         }
-      } catch (_) {
+      } catch (err) {
         toast('Pick request failed');
+        console.error('pick failed', err);
       } finally {
         pickInFlight = false;
         if (btn) { btn.disabled = false; btn.textContent = 'Pick → home'; }
