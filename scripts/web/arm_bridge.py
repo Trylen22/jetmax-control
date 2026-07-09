@@ -21,7 +21,7 @@ HOME = (0.0, -160.0, 200.0)
 
 # Vision pick — same tuning as belt_vision.py (watch from current XY)
 APPROACH_Z = 180.0
-PICK_Z = 110.0  # grab / release height (was 125 — too high for solid contact)
+PICK_Z = 100.0  # grab / release height (was 110 — still too high for clean home grab)
 TOOL_OFFSET_X = -37.0
 TOOL_OFFSET_Y = 5.0
 DETECTION_URL = "http://127.0.0.1:8081/detection.json"
