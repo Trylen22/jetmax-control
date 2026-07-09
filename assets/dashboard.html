@@ -765,6 +765,131 @@
 
     .launcher.hidden, #arm-launcher.hidden { display: none; }
 
+    /* ── Arm reference (product image + axis map) ── */
+    .arm-ref {
+      display: grid;
+      grid-template-columns: minmax(220px, 320px) 1fr;
+      gap: 22px;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 22px;
+    }
+
+    .arm-ref-photo {
+      position: relative;
+      background:
+        radial-gradient(ellipse at 50% 70%, var(--accent-soft), transparent 65%),
+        var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+
+    .arm-ref-photo img {
+      width: 100%;
+      max-width: 280px;
+      height: auto;
+      display: block;
+      object-fit: contain;
+      filter: drop-shadow(0 8px 18px rgba(16, 18, 22, 0.12));
+    }
+
+    html[data-theme="dark"] .arm-ref-photo img {
+      filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.45));
+    }
+
+    .arm-ref-meta h2 {
+      font-size: 17px;
+      font-weight: 650;
+      letter-spacing: -0.01em;
+      margin-bottom: 4px;
+    }
+
+    .arm-ref-meta p {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-bottom: 14px;
+      max-width: 420px;
+    }
+
+    .axis-map {
+      display: grid;
+      gap: 8px;
+    }
+
+    .axis-row {
+      display: grid;
+      grid-template-columns: 42px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 10px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 12.5px;
+    }
+
+    .axis-row .axis {
+      font-family: var(--mono);
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--accent-hover);
+    }
+
+    .axis-row .desc { color: var(--text-dim); }
+    .axis-row .keys {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      border-radius: 5px;
+      padding: 3px 8px;
+      white-space: nowrap;
+    }
+
+    .cockpit-ref {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 10px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+
+    .cockpit-ref img {
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+      border-radius: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .cockpit-ref .hint {
+      font-size: 12px;
+      color: var(--text-dim);
+      line-height: 1.45;
+    }
+
+    .cockpit-ref .hint strong {
+      display: block;
+      color: var(--text);
+      font-weight: 600;
+      margin-bottom: 2px;
+      font-size: 12.5px;
+    }
+
     @media (max-width: 900px) {
       .shell { grid-template-columns: 1fr; }
       .sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
@@ -773,6 +898,8 @@
       .nav button::before { display: none; }
       .status { display: none; }
       .cockpit { grid-template-columns: 1fr; }
+      .arm-ref { grid-template-columns: 1fr; }
+      .arm-ref-photo img { max-width: 220px; }
       main { padding: 22px 18px 48px; }
       h1 { font-size: 21px; }
     }
@@ -911,6 +1038,39 @@
         <div id="arm-launcher">
           <h1>Arm control</h1>
           <p class="subtitle">Launch interactive modes with live camera, or copy SSH commands.</p>
+
+          <div class="arm-ref">
+            <div class="arm-ref-photo">
+              <img src="jetmax-arm.webp" alt="Hiwonder JetMax robotic arm" width="280" height="280" loading="lazy" />
+            </div>
+            <div class="arm-ref-meta">
+              <h2>Hiwonder JetMax</h2>
+              <p>Use this as your mental model while jogging. Axes match the ROS frame used by the cockpit and saved positions.</p>
+              <div class="axis-map">
+                <div class="axis-row">
+                  <span class="axis">X</span>
+                  <span class="desc">Left / right across the base</span>
+                  <span class="keys">A · D</span>
+                </div>
+                <div class="axis-row">
+                  <span class="axis">Y</span>
+                  <span class="desc">Forward / back from the base</span>
+                  <span class="keys">W · S</span>
+                </div>
+                <div class="axis-row">
+                  <span class="axis">Z</span>
+                  <span class="desc">Up / down (end-effector height)</span>
+                  <span class="keys">R · F</span>
+                </div>
+                <div class="axis-row">
+                  <span class="axis">⌂</span>
+                  <span class="desc">Return to home pose</span>
+                  <span class="keys">Space</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="grid">
             <div class="card">
               <span class="tag live">Interactive</span>
@@ -947,6 +1107,14 @@
             <div>
               <h1>Jog controls</h1>
               <p class="subtitle" style="margin-bottom:0;font-size:13px">Use keyboard or on-screen pad</p>
+            </div>
+
+            <div class="cockpit-ref">
+              <img src="jetmax-arm-sm.webp" alt="JetMax reference" width="72" height="72" loading="lazy" />
+              <div class="hint">
+                <strong>Orientation cue</strong>
+                A/D → X · W/S → Y · R/F → Z · Space → home
+              </div>
             </div>
 
             <div class="control-banner" id="control-banner" tabindex="0">
