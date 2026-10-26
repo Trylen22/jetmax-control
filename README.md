@@ -1,141 +1,64 @@
-# JetMax Robotic Arm — Custom Control Scripts
+# JetMax control
 
-Custom Python scripts and documentation for operating the **Hiwonder JetMax** robotic arm running on a **Jetson Nano**, developed for an industrial automation project integrating a conveyor belt and an **Allen Bradley Micro820 PLC**.
+Python tools and a browser control deck for a Hiwonder JetMax running on a Jetson Nano. The project combines ROS-based arm control, camera processing, and experiments with an Allen-Bradley Micro820 PLC.
 
-> **Base hardware/ROS packages:** [JetMaxRoboticArm on GitHub](https://github.com/JetMaxRoboticArm)
+[![Recorded JetMax dashboard and camera preview](docs/demo/preview.webp)](https://trylen22.github.io/demos/jetmax/)
 
----
+[Watch the captioned demonstration](https://trylen22.github.io/demos/jetmax/). The page also provides the MP4 and subtitle file.
 
-## Repo Layout
+The video is existing lab footage of the control dashboard and camera preview. It is not a new unattended robot run or a complete verification of every script in this repository.
 
-```text
-jetmax-control/
-├── scripts/
-│   ├── arm/          wasd_control, hello_jetmax, pick/place helpers
-│   ├── plc/          plc_live, plc_sim, plc_read, modb, watch
-│   └── vision/       belt_vision, belt_vision_socket_tcp, stream
-├── lib/              banner.py, paths.py
-├── data/             saved_positions.json (gitignored, lives on robot)
-├── docs/             setup guides and quick reference
-├── assets/           printable cards and reference HTML
-└── run.sh            shortcut launcher
-```
+## Hardware and software
 
----
+- Hiwonder JetMax with its supplied Ubuntu 18.04 and ROS Melodic environment.
+- Jetson Nano with the Hiwonder `jetmax_control` and `usb_cam` packages.
+- Optional Micro820 and a configured lab Ethernet network.
+- `pylogix` and `pymodbus` for the PLC experiments.
 
-## Quick Start (JetMax)
+The base robot packages are maintained by [JetMaxRoboticArm](https://github.com/JetMaxRoboticArm). A generic laptop Python environment does not replace the robot's ROS installation.
 
-**1. One-time setup on the robot**
+## Start on a configured robot
 
 ```bash
-ssh -i ~/.ssh/jetmax_key hiwonder@100.65.198.107
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/Trylen22/jetmax-control/main/scripts/robot_setup.sh)" 2>/dev/null || ~/jetmax-control/scripts/robot_setup.sh
-```
-
-Or after cloning locally on the robot:
-
-```bash
-git clone https://github.com/Trylen22/jetmax-control.git ~/jetmax-control
-~/jetmax-control/scripts/robot_setup.sh
-```
-
-**2. Run scripts**
-
-```bash
-cd ~/jetmax-control
-./run.sh wasd
-./run.sh belt
-./run.sh plc-live
-./run.sh plc-live-sim
-```
-
-Or directly:
-
-```bash
-source ~/ros/devel/setup.bash
-python3 ~/jetmax-control/scripts/arm/wasd_control.py
-```
-
-**3. Update after changes**
-
-```bash
-cd ~/jetmax-control && git pull
-```
-
----
-
-## SSH
-
-```bash
-# Over Tailscale (anywhere)
-ssh -i ~/.ssh/jetmax_key hiwonder@100.65.198.107
-
-# Over PLC ethernet (on-site)
-ssh hiwonder@192.168.1.50
-```
-
-Password: `hiwonder`
-
----
-
-## Camera Feed
-
-```text
-http://100.65.198.107:8080/stream?topic=/usb_cam/image_rect_color
-```
-
-## Control Deck (web dashboard)
-
-Modular menu with camera embed, script launch commands, and quick links:
-
-```bash
+git clone https://github.com/Trylen22/jetmax-control.git
+cd jetmax-control
 ./run.sh dashboard
-# open http://100.65.198.107:8888/
 ```
 
-Or start the custom stream:
+Open `http://<robot-address>:8888/` from the connected computer. `run.sh` sources `~/ros/devel/setup.bash` when it exists. Inspect `scripts/robot_setup.sh` before using it for initial configuration.
+
+Use the confirmed address and an account configured for your robot:
 
 ```bash
-./run.sh stream
-# then open http://100.65.198.107:8080
+ssh -i ~/.ssh/jetmax_key hiwonder@<robot-address>
 ```
 
----
+## Commands
 
-## Hardware
-
-- **Robot:** Hiwonder JetMax Standard
-- **Controller:** NVIDIA Jetson Nano (Ubuntu 18.04 + ROS Melodic)
-- **PLC:** Allen Bradley Micro820 @ `192.168.1.10`
-- **JetMax eth0:** `192.168.1.50`
-- **Tailscale:** `100.65.198.107`
-
----
-
-## Documentation
-
-| Doc | Purpose |
+| Command | Purpose |
 |---|---|
-| [docs/COMMANDS.md](docs/COMMANDS.md) | Quick reference — SSH, scripts, ROS commands |
-| [docs/SETUP.md](docs/SETUP.md) | Full setup — WiFi, Tailscale, ROS, arm movement |
-| [docs/BOOT_SEQUENCE.md](docs/BOOT_SEQUENCE.md) | Boot sequence and WiFi auto-connect |
-| [docs/SSH_LOGIN_CARD.md](docs/SSH_LOGIN_CARD.md) | Printable SSH/camera card |
+| `./run.sh dashboard` | Browser dashboard on port 8888 |
+| `./run.sh stream` | Camera stream on port 8080 |
+| `./run.sh vision-stream` | Annotated green detection on port 8081 |
+| `./run.sh wasd` | Keyboard jogging |
+| `./run.sh belt` | Vision-guided belt-pick experiment |
+| `./run.sh belt-tcp` | Belt vision with PLC TCP communication |
+| `./run.sh plc-read` | Read the configured PLC command tag |
+| `./run.sh plc-live-sim` | PLC integration with simulated robot actions |
+| `./run.sh modb` | Modbus inspection tools |
 
----
+Movement commands require a supervised, configured robot workspace. Read each script and its device settings before running it. The simulated PLC mode does not validate physical motion or communication on another installation.
 
-## Dependencies
+## Source map
 
-On the JetMax:
+| Directory | Contents |
+|---|---|
+| `scripts/arm/` | Jogging and arm-motion experiments |
+| `scripts/vision/` | Image streams and belt detection |
+| `scripts/plc/` | PLC and protocol experiments |
+| `scripts/web/` | Dashboard server |
+| `lib/` | Shared helpers |
+| `docs/` | Setup notes and command references |
+| `assets/` | Dashboard and reference pages |
 
-```bash
-pip3 install pylogix pymodbus
-```
-
-ROS packages (pre-installed by Hiwonder): `jetmax_control`, `usb_cam`
-
----
-
-## See Also
-
-- [Hiwonder JetMax ROS repo](https://github.com/JetMaxRoboticArm)
-- GitHub: [github.com/Trylen22/jetmax-control](https://github.com/Trylen22/jetmax-control)
+Start with [setup](docs/SETUP.md), [commands](docs/COMMANDS.md), and the [boot sequence](docs/BOOT_SEQUENCE.md). Older lab notes contain installation-specific network examples; replace them with confirmed settings for your station. Keep local poses, credentials, and recordings out of source control.
